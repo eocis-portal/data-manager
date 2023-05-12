@@ -1,0 +1,7 @@
+name: "Ocean Data Bundle"
+spec:
+  key1: value
+  key2: value
+datasets:
+  - sst
+  - oc

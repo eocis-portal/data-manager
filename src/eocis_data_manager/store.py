@@ -27,10 +27,6 @@ import logging
 
 from sqlite3 import connect
 import datetime
-import json
-from eocis_data_manager.task import Task
-from eocis_data_manager.job import Job
-
 
 class Store:
     """
@@ -46,6 +42,7 @@ class Store:
         bundle_id - a unique ID for each bundle
         bundle_name - the name of the bundle
         spec - JSON encoded spec for bundle
+        minx, miny, maxx, maxy - extent in the relevant coordinate system
 
     datasets:
         dataset_id - a unique ID for each dataset
@@ -85,9 +82,9 @@ class Store:
         retrycount - number of attempts made to retry a failed job
     """
 
-    SCHEMA = "V1" # version of the database schema
+    SCHEMA = "V1"  # version of the database schema
 
-    def __init__(self,path):
+    def __init__(self, path):
         """
         Implement a persistent store based on an SQLite3 database
         :param path: the path to the database file
@@ -96,19 +93,22 @@ class Store:
         Initialises the store.  Will attempt to create table(s) if they do not already exist (when called for the first time)
         """
         self.path = path
-        conn = connect(self.path,timeout=10.0) # bump the standard timeout up from 5 secs to 10 secs
+        conn = connect(self.path, timeout=10.0)  # bump the standard timeout up from 5 secs to 10 secs
         curs = conn.cursor()
         # Create tables
 
-        curs.execute('''CREATE TABLE IF NOT EXISTS data_bundles(
+        curs.execute('''CREATE TABLE IF NOT EXISTS bundles(
                         bundle_id text,
                         bundle_name text, 
                         spec text,
+                        minx real,
+                        miny real,
+                        maxx real,
+                        maxy real,
                         PRIMARY KEY(bundle_id));''')
 
         curs.execute('''CREATE TABLE IF NOT EXISTS datasets(
                         dataset_id text,
-                        bundle_id text,
                         dataset_name text, 
                         temporal_resolution text,
                         spatial_resolution text,
@@ -116,15 +116,21 @@ class Store:
                         end_date text,
                         location text,
                         spec text,
-                        PRIMARY KEY(dataset_id),
-                        FOREIGN KEY(bundle_id) REFERENCES data_bundles(bundle_id) ON DELETE CASCADE);''')
+                        PRIMARY KEY(dataset_id));''')
+
+        curs.execute('''CREATE TABLE IF NOT EXISTS dataset_bundle(
+                                bundle_id text,
+                                dataset_id text,
+                                PRIMARY KEY(bundle_id,dataset_id),
+                                FOREIGN KEY(bundle_id) REFERENCES bundles(bundle_id) ON DELETE CASCADE,
+                                FOREIGN KEY(dataset_id) REFERENCES datasets(dataset_id) ON DELETE CASCADE);''')
 
         curs.execute('''CREATE TABLE IF NOT EXISTS variables(
-                        variable_id text PRIMARY_KEY,
-                        variable_name text, 
+                        variable_id text,
                         dataset_id text,
+                        variable_name text, 
                         spec text,
-                        PRIMARY KEY(variable_id),
+                        PRIMARY KEY(variable_id,dataset_id),
                         FOREIGN KEY(dataset_id) REFERENCES datasets(dataset_id) ON DELETE CASCADE);''')
 
         curs.execute('''CREATE TABLE IF NOT EXISTS jobs(
@@ -163,7 +169,7 @@ class Store:
 
         curs.execute('''INSERT INTO metadata(schema,creation_date) 
                 SELECT ?, ? 
-                WHERE NOT EXISTS(SELECT 1 FROM metadata);''',(Store.SCHEMA,Store.encodeDate(datetime.datetime.now())))
+                WHERE NOT EXISTS(SELECT 1 FROM metadata);''', (Store.SCHEMA, Store.encodeDate(datetime.datetime.now())))
 
         # check the metadata is consistent, raise an exception if not
         self.checkMetadata(conn)
@@ -171,24 +177,25 @@ class Store:
         conn.commit()
         self.logger = logging.getLogger("Store")
 
-    def checkMetadata(self,conn):
+    def checkMetadata(self, conn):
         curs = conn.cursor()
         curs.execute("SELECT schema, creation_date FROM metadata")
         results = curs.fetchall()
         if len(results) != 1:
             raise Exception("Database metadata is corrupted")
 
-        (schema,creation_date) = tuple(results[0])
+        (schema, creation_date) = tuple(results[0])
 
         # check that the database schema matches the schema expected by the software
         if schema != Store.SCHEMA:
-            raise Exception("Unable to open database.  Database schema %s is different to current version %s."%(schema,Store.SCHEMA))
+            raise Exception("Unable to open database.  Database schema %s is different to current version %s." % (
+            schema, Store.SCHEMA))
 
     def openTransaction(self):
         return Transaction(self)
 
-
     TIMESTAMP_FORMAT = "%Y/%m/%d %H:%M:%S"
+    DATE_FORMAT = "%Y/%m/%d"
 
     # attribute names
     JOB_JOB_ID = "job_id"
@@ -215,11 +222,27 @@ class Store:
         if dt is None:
             return ""
         else:
-            return datetime.datetime.strftime(dt, Store.TIMESTAMP_FORMAT)
+            return datetime.datetime.strftime(dt, Store.DATE_FORMAT)
 
     @staticmethod
     def decodeDate(s):
         """Decode a string to a datetime object, compatible with Store.encodeDate"""
+        if s == "" or s is None:
+            return None
+        else:
+            return datetime.datetime.strptime(s, Store.DATE_FORMAT).replace(tzinfo=None).date()
+
+    @staticmethod
+    def encodeDateTime(dt):
+        """Encode a datetime object as a string, compatible with Store.decodeDateTime"""
+        if dt is None:
+            return ""
+        else:
+            return datetime.datetime.strftime(dt, Store.TIMESTAMP_FORMAT)
+
+    @staticmethod
+    def decodeDateTime(s):
+        """Decode a string to a datetime object, compatible with Store.encodeDateTime"""
         if s == "" or s is None:
             return None
         else:
@@ -230,10 +253,9 @@ class Store:
         return ",".join(map(lambda x: "'" + x + "'", values))
 
 
-
 class Transaction(object):
 
-    def __init__(self,store):
+    def __init__(self, store):
         self.store = store
         self.conn = connect(self.store.path)
         # this database relies on foreign keys to cascade the delete of child tasks when a parent task is deleted
@@ -242,259 +264,16 @@ class Transaction(object):
     def __enter__(self):
         return self
 
-    def __exit__(self,a,b,c):
+    def __exit__(self, a, b, c):
         self.close()
 
     def close(self):
         self.conn.commit()
 
-    def computeSummary(self):
-
-        curs = self.conn.cursor()
-
-        curs.execute("SELECT 'JOB' AS 'TYPE', state AS STATE, COUNT(*) AS COUNT FROM jobs GROUP BY state"+
-                     " UNION "+
-                     "SELECT 'TASK' AS 'TYPE', state AS STATE, COUNT(*) AS COUNT FROM tasks GROUP BY state")
-        return self.collectResults(curs)
-
-
-    def createJob(self,job):
-        """
-        creates a job job
-
-        :param job: the job object
-        """
-        curs = self.conn.cursor()
-        curs.execute(
-            "INSERT INTO jobs(job_id, submission_date, submitter_id, spec, state, completion_date) values (?,?,?,?,?,?)",
-            (
-                job.getJobId(),
-                Store.encodeDate(job.getSubmissionDate()),
-                self.store.encrypt(job.getSubmitterId()),
-                json.dumps(job.getSpec()),
-                job.getState(),
-                Store.encodeDate(job.getCompletionDate())
-            ))
-        return self
-
-    def updateJob(self,job):
-        """
-        updates an existing job
-
-        :param job: the job object
-        """
-        curs = self.conn.cursor()
-        curs.execute(
-            "UPDATE jobs SET submission_date=?,completion_date=?,state=? WHERE job_id=?",
-            (Store.encodeDate(job.getSubmissionDate()),
-             Store.encodeDate(job.getCompletionDate()),
-             job.getState(),
-             job.getJobId()))
-        return self
-
-    def createTask(self,task):
-        """
-        stores a new task
-
-        :param task: the task object
-        """
-        curs = self.conn.cursor()
-        curs.execute("INSERT INTO tasks(parent_job_id, task_name, submission_date, remote_task_id, spec, state, completion_date, error, retry_count) values (?,?,?,?,?,?,?,?,?)", (
-            task.getJobId(),
-            task.getTaskName(),
-            Store.encodeDate(task.getSubmissionDate()),
-            task.getRemoteId(),
-            json.dumps(task.getSpec()),
-            task.getState(),
-            Store.encodeDate(task.getCompletionDate()),
-            task.getError(),
-            task.getRetryCount()))
-        return self
-
-    def updateTask(self,task):
-        """
-        updates an existing task
-
-        :param task: the task object
-        """
-        curs = self.conn.cursor()
-        curs.execute(
-            "UPDATE tasks SET submission_date=?,completion_date=?,error=?,state=?,remote_task_id=?,retry_count=? WHERE parent_job_id=? AND task_name=?",
-            (Store.encodeDate(task.getSubmissionDate()),
-             Store.encodeDate(task.getCompletionDate()),
-             task.getError(),
-             task.getState(),
-             task.getRemoteId(),
-             task.getRetryCount(),
-             task.getJobId(),
-             task.getTaskName()))
-        return self
-
-
-    def resetRunningTasks(self):
-        """
-        mark all running tasks as new.
-        """
-        curs = self.conn.cursor()
-        curs.execute("UPDATE tasks SET state='NEW' WHERE state='RUNNING'")
-
-
-    def removeJob(self,job_id):
-        """
-        delete a job and all its tasks
-
-        :param job_id: the id of the job
-        """
-        curs = self.conn.cursor()
-        curs.execute("DELETE FROM jobs WHERE job_id=?", (job_id,))
-        # foreign key from tasks(parent_job_id) => jobs(job_id) should ensure child tasks are deleted
-
-    def removeTasksForJob(self,job_id):
-        """
-        delete all tasks belonging to a job
-
-        :param job_id: the id of the job
-        """
-        curs = self.conn.cursor()
-        curs.execute("DELETE FROM tasks WHERE parent_job_id=?", (job_id,))
-
-    def existsJob(self,job_id):
-        """
-        check if a job exists
-
-        :param job_id: the id of the job
-        """
-
-        curs = self.conn.cursor()
-        curs.execute("SELECT job_id FROM jobs WHERE job_id=?", (job_id,))
-        return len(curs.fetchall()) > 0
-
-    def listJobs(self,states=None):
-        """
-        list all stored jobs
-        """
-
-        curs = self.conn.cursor()
-        if states:
-            curs.execute("SELECT * FROM jobs WHERE state IN (%s)"%(Store.renderValueList(states)))
-        else:
-            curs.execute("SELECT * FROM jobs")
-        return self.collectJobs(self.collectResults(curs))
-
-    def getJob(self,job_id):
-        """
-        retrieve and return a job given its ID.  Return None if no matching job found
-        """
-        curs = self.conn.cursor()
-        curs.execute("SELECT * FROM jobs WHERE job_id = ?",(job_id,))
-
-        jobs = self.collectJobs(self.collectResults(curs))
-        if len(jobs) == 0:
-            return None
-        else:
-            return jobs[0]
-
-    def listJobsBySubmitterId(self,submitter_id):
-        """
-        list all stored jobs
-        """
-        curs = self.conn.cursor()
-        curs.execute("SELECT * FROM jobs ORDER BY submission_date")
-        jobs = self.collectJobs(self.collectResults(curs))
-        jobs = list(filter(lambda job:job.getSubmitterId() == submitter_id,jobs))
-        return jobs
-
-    def listTasks(self,states=None):
-        """
-        return a list of (task,submitter_id,job_state) tuples, ordered by the submission date of the parent job
-        """
-        curs = self.conn.cursor()
-        if states:
-            curs.execute("SELECT T.*, J.submitter_id, J.state FROM tasks T, jobs J WHERE T.state IN (%s) AND T.parent_job_id = J.job_id ORDER BY J.submission_date"%(Store.renderValueList(states)))
-        else:
-            curs.execute("SELECT T.*, J.submitter_id, J.state FROM tasks T, jobs J WHERE T.parent_job_id = J.job_id ORDER BY J.submission_date")
-        results = self.collectResults(curs)
-        return list(zip(self.collectTasks(results),map(lambda x:x[Store.JOB_SUBMITTER_ID],results),map(lambda x:x[Store.JOB_STATE],results)))
-
-    def listJobTasks(self, job_id):
-        """
-        list all tasks associated with a job
-        """
-        curs = self.conn.cursor()
-        curs.execute("SELECT * FROM tasks WHERE parent_job_id = ?",(job_id,))
-        return self.collectTasks(self.collectResults(curs))
-
-    def collectResults(self,curs):
+    def collectResults(self, curs):
         rows = []
         column_names = [column[0] for column in curs.description]
         for row in curs.fetchall():
-            rows.append({v1:v2 for (v1,v2) in zip(column_names,row)})
+            rows.append({v1: v2 for (v1, v2) in zip(column_names, row)})
         return rows
-
-    def collectTasks(self,results):
-        tasks = []
-        for row in results:
-            task = Task(row[Store.TASK_PARENT_JOB_ID],row[Store.TASK_TASK_NAME],json.loads(row[Store.TASK_SPEC]))
-            task \
-                .setCompletionDate(Store.decodeDate(row[Store.TASK_COMPLETION_DATE])) \
-                .setSubmissionDate(Store.decodeDate(row[Store.TASK_SUBMISSION_DATE])) \
-                .setError(row[Store.TASK_ERROR]) \
-                .setRemoteId(row[Store.TASK_REMOTE_TASK_ID]) \
-                .setState(row[Store.TASK_STATE]) \
-                .setRetryCount(row[Store.TASK_RETRY_COUNT])
-            tasks.append(task)
-        return tasks
-
-    def collectJobs(self,results):
-        jobs = []
-        for row in results:
-            job = Job(row[Store.JOB_JOB_ID],row[Store.JOB_SUBMITTER_ID],json.loads(row[Store.JOB_SPEC]))
-            job \
-                .setCompletionDate(Store.decodeDate(row[Store.JOB_COMPLETION_DATE])) \
-                .setSubmissionDate(Store.decodeDate(row[Store.JOB_SUBMISSION_DATE])) \
-                .setState(row[Store.JOB_STATE]) \
-                .setError(row[Store.JOB_ERROR])
-            jobs.append(job)
-        return jobs
-
-
-    def countJobsByState(self,states):
-        """
-        Arguments:
-        :param states: list of the states of interest from ("NEW","RUNNING","COMPLETED","FAILED")
-
-        :return: the number of jobs with the given state
-        """
-
-        curs = self.conn.cursor()
-        curs.execute("SELECT COUNT(*) FROM jobs WHERE state IN (%s)"%(Store.renderValueList(states)))
-        return curs.fetchone()[0]
-
-    def countTasksByState(self,states,job_id=None):
-        """
-        Arguments:
-        :param states: list of the states of interest from ("NEW","RUNNING","COMPLETED","FAILED")
-
-        Keyword Arguments:
-        :param job_id: only count tasks associated with this job id, if provided
-
-        :return: the number of tasks with the given state(s)
-        """
-        curs = self.conn.cursor()
-        if job_id:
-            curs.execute("select COUNT(*) FROM tasks WHERE state IN (%s) AND parent_job_id = ?"%(Store.renderValueList(states)), (job_id,))
-        else:
-            curs.execute("select COUNT(*) FROM tasks WHERE state IN (%s)"%(Store.renderValueList(states)))
-        return curs.fetchone()[0]
-
-    def countTaskErrors(self,job_id):
-        """
-        Arguments:
-        :param job_id: job id to check tasks
-
-        :return: the number of tasks from the specified job that completed with an error
-        """
-        curs = self.conn.cursor()
-        curs.execute("select COUNT(*) FROM tasks WHERE error <> '' AND parent_job_id = ?",(job_id,))
-        return curs.fetchone()[0]
 

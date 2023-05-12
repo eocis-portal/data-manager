@@ -40,29 +40,29 @@ class Task:
         self.spec = spec
         self.state = Task.STATE_NEW
         self.error = ""
-        self.submission_date = None
-        self.completion_date = None
+        self.submission_date_time = None
+        self.completion_date_time = None
         self.remote_id = ""
         self.retrycount = 0
 
     def setRunning(self):
         """Move this task into the RUNNING state, noting the current UTC date/time as its submission date"""
-        self.setState(Task.STATE_RUNNING).setSubmissionDate(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
+        self.setState(Task.STATE_RUNNING).setSubmissionDateTime(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
         return self
 
     def setCompleted(self):
         """Move this task into the COMPLETED state, noting the current UTC date/time as its completed date"""
-        self.setState(Task.STATE_COMPLETED).setCompletionDate(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
+        self.setState(Task.STATE_COMPLETED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
         return self
 
     def setFailed(self,error=""):
         """Move this task into the FAILED state, noting the error and the current UTC date/time as its completed date"""
-        self.setState(Task.STATE_FAILED).setCompletionDate(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)).setError(error)
+        self.setState(Task.STATE_FAILED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)).setError(error)
         return self
 
     def retry(self):
         """Move this task into the NEW state, incrementing the retry count and removing any associated submission/completion dates and error message"""
-        self.setState(Task.STATE_NEW).setCompletionDate(None).setSubmissionDate(None).setRetryCount(self.getRetryCount()+1).setError("")
+        self.setState(Task.STATE_NEW).setCompletionDateTime(None).setSubmissionDateTime(None).setRetryCount(self.getRetryCount()+1).setError("")
 
     def getJobId(self):
         return self.job_id
@@ -91,18 +91,18 @@ class Task:
     def getSpec(self):
         return self.spec
 
-    def getSubmissionDate(self):
-        return self.submission_date
+    def getSubmissionDateTime(self):
+        return self.submission_date_time
 
-    def setSubmissionDate(self,submission_date):
-        self.submission_date = submission_date
+    def setSubmissionDateTime(self,submission_date_time):
+        self.submission_date_time = submission_date_time
         return self
 
-    def getCompletionDate(self):
-        return self.completion_date
+    def getCompletionDateTime(self):
+        return self.completion_date_time
 
-    def setCompletionDate(self,completion_date=None):
-        self.completion_date = completion_date
+    def setCompletionDateTime(self,completion_date_time=None):
+        self.completion_date_time = completion_date_time
         return self
 
     def getState(self):
@@ -123,11 +123,11 @@ class Task:
         if self.state == Task.STATE_NEW:
             return 0
         if self.state == Task.STATE_RUNNING:
-            if self.getSubmissionDate() is not None:
-                return (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - self.getSubmissionDate()).total_seconds()/3600
+            if self.getSubmissionDateTime() is not None:
+                return (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - self.getSubmissionDateTime()).total_seconds()/3600
             else:
                 return 0
-        return (self.getCompletionDate() - self.getSubmissionDate()).total_seconds()/3600
+        return (self.getCompletionDateTime() - self.getSubmissionDateTime()).total_seconds()/3600
 
 
     def __repr__(self):

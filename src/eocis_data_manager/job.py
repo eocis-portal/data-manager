@@ -55,8 +55,8 @@ class Job:
         self.submitter_id = submitter_id
         self.spec = spec
         self.state = Job.STATE_NEW
-        self.submission_date = None
-        self.completion_date = None
+        self.submission_date_time = None
+        self.completion_date_time = None
         self.error = ""
 
     def getJobId(self):
@@ -69,12 +69,12 @@ class Job:
 
     def setCompleted(self):
         """Move this job into the COMPLETED state, noting the current UTC date/time as its completed date"""
-        self.setState(Job.STATE_COMPLETED).setCompletionDate(datetime.datetime.now(datetime.timezone.utc))
+        self.setState(Job.STATE_COMPLETED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc))
         return self
 
     def setFailed(self,error=""):
         """Move this job into the FAILED state, noting the error and the current UTC date/time as its completed date"""
-        self.setState(Job.STATE_FAILED).setCompletionDate(datetime.datetime.now(datetime.timezone.utc)).setError(error)
+        self.setState(Job.STATE_FAILED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc)).setError(error)
         return self
 
     def getSubmitterId(self):
@@ -83,18 +83,18 @@ class Job:
     def getSpec(self):
         return self.spec
 
-    def getSubmissionDate(self):
-        return self.submission_date
+    def getSubmissionDateTime(self):
+        return self.submission_date_time
 
-    def setSubmissionDate(self, submission_date):
-        self.submission_date = submission_date
+    def setSubmissionDateTime(self, submission_date_time):
+        self.submission_date_time = submission_date_time
         return self
 
-    def getCompletionDate(self):
-        return self.completion_date
+    def getCompletionDateTime(self):
+        return self.completion_date_time
 
-    def setCompletionDate(self, completion_date):
-        self.completion_date = completion_date
+    def setCompletionDateTime(self, completion_date_time):
+        self.completion_date_time = completion_date_time
         return self
 
     def getState(self):
@@ -113,14 +113,14 @@ class Job:
 
     def getDurationHours(self):
         if self.state == Job.STATE_NEW or self.state == Job.STATE_RUNNING:
-            return (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - self.getSubmissionDate()).total_seconds()/3600
+            return (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - self.getSubmissionDateTime()).total_seconds()/3600
         else:
-            return (self.getCompletionDate() - self.getSubmissionDate()).total_seconds()/3600
+            return (self.getCompletionDateTime() - self.getSubmissionDateTime()).total_seconds()/3600
 
     def getExpiryDate(self):
         if self.state not in [Job.STATE_COMPLETED,Job.STATE_FAILED]:
             return None
-        return self.getCompletionDate()+datetime.timedelta(seconds=Config.CLEANUP_AFTER_SECS)
+        return self.getCompletionDateTime()+datetime.timedelta(seconds=Config.CLEANUP_AFTER_SECS)
 
     STATE_NEW = "NEW"
     STATE_RUNNING = "RUNNING"
@@ -139,8 +139,8 @@ class Job:
             "submitter":    self.submitter_id,
             "spec":         json.dumps(self.getSpec()),
             "state":        self.getState(),
-            "submitted":    str(self.getSubmissionDate()),
-            "completed":    str(self.getCompletionDate()),
+            "submitted":    str(self.getSubmissionDateTime()),
+            "completed":    str(self.getCompletionDateTime()),
             "expiry":       str(self.getExpiryDate()),
             "duration":     self.getDurationHours(),
             "error":        self.getError()
@@ -166,8 +166,8 @@ class Job:
         data["state"] = self.state
         data["error"] = self.getError()
         data["duration"]  = self.getDurationHours()
-        data["submission_date"] = str(self.getSubmissionDate())
-        data["completion_date"] = str(self.getCompletionDate()) if self.state == Job.STATE_COMPLETED else ""
+        data["submission_date"] = str(self.getSubmissionDateTime())
+        data["completion_date"] = str(self.getCompletionDateTime()) if self.state == Job.STATE_COMPLETED else ""
         data["duration"] = self.getDurationHours()
         data["new_tasks"] = transaction.countTasksByState([Task.STATE_NEW],self.getJobId())
         data["running_tasks"] = transaction.countTasksByState([Task.STATE_RUNNING],self.getJobId())

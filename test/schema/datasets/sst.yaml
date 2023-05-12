@@ -1,0 +1,18 @@
+name: "Sea Surface Temperatures"
+temporal_resolution: "daily"
+spatial_resolution: "0.05"
+start_date: "01-09-1981"
+end_date: "31-12-2022"
+location: "/path/to/data"
+spec:
+  key1: value
+  key2: value
+variables:
+  sst:
+    name: Sea Surface Temperature
+  sst_uncertainty:
+    name: Sea Surface Temperature Uncertainty
+  sea_ice_fraction:
+    name: Sea Ice Fraction
+  sea_fraction:
+    name: Sea Fraction
