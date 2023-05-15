@@ -264,11 +264,19 @@ class Transaction(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, a, b, c):
-        self.close()
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if exc_type is None:
+            self.commit()
+            return True
+        else:
+            self.rollback()
+            return False
 
-    def close(self):
+    def commit(self):
         self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
 
     def collectResults(self, curs):
         rows = []

@@ -23,7 +23,7 @@ from eocis_data_manager.store import Store, Transaction
 from eocis_data_manager.task import Task
 from eocis_data_manager.job import Job
 
-class SchemaOperations(Transaction):
+class JobOperations(Transaction):
 
     def __init__(self, store):
         super().__init__(store)
