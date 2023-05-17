@@ -45,7 +45,7 @@ class JobOperations(Transaction):
         """
         curs = self.conn.cursor()
         curs.execute(
-            "INSERT INTO jobs(job_id, submission_date, submitter_id, spec, state, completion_date) values (?,?,?,?,?,?)",
+            "INSERT INTO jobs(job_id, submission_date, submitter_id, spec, state, completion_date) values (%s,%s,%s,%s,%s,%s)",
             (
                 job.getJobId(),
                 Store.encodeDateTime(job.getSubmissionDate()),
@@ -64,7 +64,7 @@ class JobOperations(Transaction):
         """
         curs = self.conn.cursor()
         curs.execute(
-            "UPDATE jobs SET submission_date=?,completion_date=?,state=? WHERE job_id=?",
+            "UPDATE jobs SET submission_date=%s,completion_date=%s,state=%s WHERE job_id=%s",
             (Store.encodeDateTime(job.getSubmissionDateTime()),
              Store.encodeDateTime(job.getCompletionDateTime()),
              job.getState(),
@@ -79,7 +79,7 @@ class JobOperations(Transaction):
         """
         curs = self.conn.cursor()
         curs.execute(
-            "INSERT INTO tasks(parent_job_id, task_name, submission_date, remote_task_id, spec, state, completion_date, error, retry_count) values (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO tasks(parent_job_id, task_name, submission_date, remote_task_id, spec, state, completion_date, error, retry_count) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);",
             (
                 task.getJobId(),
                 task.getTaskName(),
@@ -92,6 +92,31 @@ class JobOperations(Transaction):
                 task.getRetryCount()))
         return self
 
+    def queue_task(self, job_id, task_name):
+        curs = self.conn.cursor()
+        curs.execute(
+            """INSERT INTO task_queue(job_id, task_name) VALUES (%s, %s);""",
+            (job_id, task_name)
+        )
+    def get_next_task(self):
+        curs = self.conn.cursor()
+        curs.execute(
+            """DELETE FROM task_queue 
+                WHERE id = (
+                  SELECT id
+                  FROM task_queue
+                  ORDER BY queue_time ASC 
+                  FOR UPDATE SKIP LOCKED
+                  LIMIT 1
+                )
+                RETURNING *;"""
+        )
+        results = self.collectResults(curs)
+        if len(results) == 0:
+            return None
+        else:
+            return results[0]
+
     def updateTask(self, task):
         """
         updates an existing task
@@ -100,7 +125,7 @@ class JobOperations(Transaction):
         """
         curs = self.conn.cursor()
         curs.execute(
-            "UPDATE tasks SET submission_date=?,completion_date=?,error=?,state=?,remote_task_id=?,retry_count=? WHERE parent_job_id=? AND task_name=?",
+            "UPDATE tasks SET submission_date=%s,completion_date=%s,error=%s,state=%s,remote_task_id=%s,retry_count=%s WHERE parent_job_id=%s AND task_name=%s",
             (Store.encodeDate(task.getSubmissionDate()),
              Store.encodeDate(task.getCompletionDate()),
              task.getError(),
@@ -125,7 +150,7 @@ class JobOperations(Transaction):
         :param job_id: the id of the job
         """
         curs = self.conn.cursor()
-        curs.execute("DELETE FROM jobs WHERE job_id=?", (job_id,))
+        curs.execute("DELETE FROM jobs WHERE job_id=%s", (job_id,))
         # foreign key from tasks(parent_job_id) => jobs(job_id) should ensure child tasks are deleted
 
     def removeTasksForJob(self, job_id):
@@ -135,7 +160,7 @@ class JobOperations(Transaction):
         :param job_id: the id of the job
         """
         curs = self.conn.cursor()
-        curs.execute("DELETE FROM tasks WHERE parent_job_id=?", (job_id,))
+        curs.execute("DELETE FROM tasks WHERE parent_job_id=%s", (job_id,))
 
     def existsJob(self, job_id):
         """
@@ -145,7 +170,7 @@ class JobOperations(Transaction):
         """
 
         curs = self.conn.cursor()
-        curs.execute("SELECT job_id FROM jobs WHERE job_id=?", (job_id,))
+        curs.execute("SELECT job_id FROM jobs WHERE job_id=%s", (job_id,))
         return len(curs.fetchall()) > 0
 
     def listJobs(self, states=None):
@@ -165,7 +190,7 @@ class JobOperations(Transaction):
         retrieve and return a job given its ID.  Return None if no matching job found
         """
         curs = self.conn.cursor()
-        curs.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,))
+        curs.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
 
         jobs = self.collectJobs(self.collectResults(curs))
         if len(jobs) == 0:
@@ -204,7 +229,7 @@ class JobOperations(Transaction):
         list all tasks associated with a job
         """
         curs = self.conn.cursor()
-        curs.execute("SELECT * FROM tasks WHERE parent_job_id = ?", (job_id,))
+        curs.execute("SELECT * FROM tasks WHERE parent_job_id = %s", (job_id,))
         return self.collectTasks(self.collectResults(curs))
 
     def collectTasks(self, results):
@@ -257,8 +282,8 @@ class JobOperations(Transaction):
         """
         curs = self.conn.cursor()
         if job_id:
-            curs.execute("select COUNT(*) FROM tasks WHERE state IN (%s) AND parent_job_id = ?" % (
-                Store.renderValueList(states)), (job_id,))
+            curs.execute("select COUNT(*) FROM tasks WHERE state IN (%s) AND parent_job_id = %s" % (
+                Store.renderValueList(states),"%"), (job_id,))
         else:
             curs.execute("select COUNT(*) FROM tasks WHERE state IN (%s)" % (Store.renderValueList(states)))
         return curs.fetchone()[0]

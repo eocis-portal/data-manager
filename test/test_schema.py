@@ -18,7 +18,6 @@
 
 
 import os
-import tempfile
 import unittest
 import datetime
 
@@ -27,6 +26,8 @@ from eocis_data_manager.schema_operations import SchemaOperations
 from eocis_data_manager.dataset import DataSet, Variable
 from eocis_data_manager.bundle import Bundle
 
+from store_test import StoreTest
+
 schema_folder = os.path.join(os.path.split(__file__)[0],"schema")
 
 class TestSchema(unittest.TestCase):
@@ -34,25 +35,26 @@ class TestSchema(unittest.TestCase):
     def test_store(self):
         """Check that schema information is faithfully stored and retrieved from the database"""
         # create a new empty database
-        tf = tempfile.NamedTemporaryFile(suffix=".db")
-        s = Store(tf.name)
-        t = SchemaOperations(s)
-        # load the schema into the database
-        t.populate_schema(schema_folder)
 
-        # retrieve bundle and dataset information
-        bundles = t.listBundles()
-        self.assertEqual(1,len(bundles))
-        datasets = t.listDataSets()
-        self.assertEqual(2,len(datasets))
-        t.close()
+        with StoreTest() as st:
+            s = st.get_store()
+            t = SchemaOperations(s)
+            # load the schema into the database
+            t.populate_schema(schema_folder)
 
-        # compare bundle and datasets with those loaded directly from file
-        datasets_from_file = DataSet.load_datasets(os.path.join(schema_folder, "datasets"))
-        bundles_from_file = Bundle.load_bundles(os.path.join(schema_folder, "bundles"))
+            # retrieve bundle and dataset information
+            bundles = t.listBundles()
+            self.assertEqual(1,len(bundles))
+            datasets = t.listDataSets()
+            self.assertEqual(2,len(datasets))
+            t.commit()
 
-        self.assert_equal_with_sort(bundles,bundles_from_file,lambda b: b.bundle_id)
-        self.assert_equal_with_sort(datasets, datasets_from_file, lambda d: d.dataset_id)
+            # compare bundle and datasets with those loaded directly from file
+            datasets_from_file = DataSet.load_datasets(os.path.join(schema_folder, "datasets"))
+            bundles_from_file = Bundle.load_bundles(os.path.join(schema_folder, "bundles"))
+
+            self.assert_equal_with_sort(bundles,bundles_from_file,lambda b: b.bundle_id)
+            self.assert_equal_with_sort(datasets, datasets_from_file, lambda d: d.dataset_id)
 
     def assert_equal_with_sort(self,list1,list2,key_fn):
         """Check that two lists contain the identical elements, when sorted according to the specified key"""

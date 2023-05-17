@@ -25,7 +25,7 @@ the service crashes.  This should ensure that no jobs get "lost" once a user has
 
 import logging
 
-from sqlite3 import connect
+from psycopg2 import connect
 import datetime
 
 class Store:
@@ -84,16 +84,17 @@ class Store:
 
     SCHEMA = "V1"  # version of the database schema
 
-    def __init__(self, path):
+    def __init__(self, connection_string):
         """
-        Implement a persistent store based on an SQLite3 database
-        :param path: the path to the database file
+        Implement a persistent store based on a PostgreSQL database
+        :param connection_string: string containing details of the database to connect to
 
 
         Initialises the store.  Will attempt to create table(s) if they do not already exist (when called for the first time)
         """
-        self.path = path
-        conn = connect(self.path, timeout=10.0)  # bump the standard timeout up from 5 secs to 10 secs
+        self.logger = logging.getLogger("Store")
+        self.connection_string = connection_string
+        conn = connect(self.connection_string)  # bump the standard timeout up from 5 secs to 10 secs
         curs = conn.cursor()
         # Create tables
 
@@ -134,7 +135,7 @@ class Store:
                         FOREIGN KEY(dataset_id) REFERENCES datasets(dataset_id) ON DELETE CASCADE);''')
 
         curs.execute('''CREATE TABLE IF NOT EXISTS jobs(
-                job_id text PRIMARY_KEY,
+                job_id text,
                 submission_date text, 
                 submitter_id text, 
                 spec text, 
@@ -157,6 +158,12 @@ class Store:
                 FOREIGN KEY(parent_job_id) REFERENCES jobs(job_id) ON DELETE CASCADE
                 );''')
 
+        curs.execute('''CREATE TABLE IF NOT EXISTS task_queue(
+                id int not null primary key generated always as identity,
+                queue_time	timestamptz default now(),
+                job_id text,
+                task_name text);''')
+
         # the metadata table holds the schema string and creation date
         # the schema is useful to guard against opening a database created by a different version of the software
 
@@ -168,14 +175,16 @@ class Store:
         # if the metadata table is empty, populate it with a single row
 
         curs.execute('''INSERT INTO metadata(schema,creation_date) 
-                SELECT ?, ? 
+                SELECT %s, %s 
                 WHERE NOT EXISTS(SELECT 1 FROM metadata);''', (Store.SCHEMA, Store.encodeDate(datetime.datetime.now())))
 
         # check the metadata is consistent, raise an exception if not
         self.checkMetadata(conn)
 
         conn.commit()
-        self.logger = logging.getLogger("Store")
+
+    def open_connection(self):
+        return connect(self.connection_string)
 
     def checkMetadata(self, conn):
         curs = conn.cursor()
@@ -253,13 +262,12 @@ class Store:
         return ",".join(map(lambda x: "'" + x + "'", values))
 
 
-class Transaction(object):
+
+class Transaction:
 
     def __init__(self, store):
         self.store = store
-        self.conn = connect(self.store.path)
-        # this database relies on foreign keys to cascade the delete of child tasks when a parent task is deleted
-        self.conn.execute("PRAGMA foreign_keys = ON;")
+        self.conn = store.open_connection()
 
     def __enter__(self):
         return self

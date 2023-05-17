@@ -51,7 +51,7 @@ class SchemaOperations(Transaction):
     def createBundle(self, bundle):
         curs = self.conn.cursor()
         curs.execute(
-            "INSERT INTO bundles(bundle_id,bundle_name,spec,minx,miny,maxx,maxy) values (?,?,?,?,?,?,?)",
+            "INSERT INTO bundles(bundle_id,bundle_name,spec,minx,miny,maxx,maxy) values (%s,%s,%s,%s,%s,%s,%s)",
             (
                 bundle.bundle_id,
                 bundle.bundle_name,
@@ -64,7 +64,7 @@ class SchemaOperations(Transaction):
 
         for dataset_id in bundle.dataset_ids:
             curs.execute(
-                "INSERT INTO dataset_bundle(bundle_id,dataset_id) values (?,?)",
+                "INSERT INTO dataset_bundle(bundle_id,dataset_id) values (%s,%s)",
                 (
                     bundle.bundle_id,
                     dataset_id
@@ -73,7 +73,7 @@ class SchemaOperations(Transaction):
     def createDataSet(self, dataset):
         curs = self.conn.cursor()
         curs.execute(
-            "INSERT INTO datasets(dataset_id, dataset_name, temporal_resolution, spatial_resolution,start_date,end_date,location,spec) values (?,?,?,?,?,?,?,?)",
+            "INSERT INTO datasets(dataset_id, dataset_name, temporal_resolution, spatial_resolution,start_date,end_date,location,spec) values (%s,%s,%s,%s,%s,%s,%s,%s)",
             (
                 dataset.dataset_id,
                 dataset.dataset_name,
@@ -86,7 +86,7 @@ class SchemaOperations(Transaction):
             ))
 
         for variable in dataset.variables:
-            curs.execute("INSERT INTO variables(variable_id, dataset_id, variable_name,  spec) values (?,?,?,?)",
+            curs.execute("INSERT INTO variables(variable_id, dataset_id, variable_name,  spec) values (%s,%s,%s,%s)",
                          (
                              variable.variable_id,
                              dataset.dataset_id,
@@ -108,7 +108,7 @@ class SchemaOperations(Transaction):
         for row in results:
             bundle_id = row["bundle_id"]
             curs = self.conn.cursor()
-            curs.execute("SELECT * FROM dataset_bundle WHERE bundle_id=?", (bundle_id,))
+            curs.execute("SELECT * FROM dataset_bundle WHERE bundle_id=%s", (bundle_id,))
             dataset_ids = []
             for r in self.collectResults(curs):
                 dataset_ids.append(r["dataset_id"])
@@ -131,7 +131,7 @@ class SchemaOperations(Transaction):
         for row in results:
             dataset_id = row["dataset_id"]
             curs = self.conn.cursor()
-            curs.execute("SELECT * FROM variables WHERE dataset_id=?", (dataset_id,))
+            curs.execute("SELECT * FROM variables WHERE dataset_id=%s", (dataset_id,))
             variables = []
             for r in self.collectResults(curs):
                 v = Variable(r["variable_id"], r["variable_name"], json.loads(r["spec"]))
