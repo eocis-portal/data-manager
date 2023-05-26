@@ -80,7 +80,7 @@ class SchemaOperations(Transaction):
                 dataset.temporal_resolution,
                 dataset.spatial_resolution,
                 Store.encodeDate(dataset.start_date),
-                Store.encodeDate(dataset.end_date),
+                '',
                 dataset.location,
                 json.dumps(dataset.spec),
             ))
@@ -145,3 +145,7 @@ class SchemaOperations(Transaction):
                         spec=json.loads(row["spec"]), variables=variables)
             datasets.append(d)
         return datasets
+
+    def updateEndDate(self, dataset_id, end_date):
+        curs = self.conn.cursor()
+        curs.execute("UPDATE datasets SET end_date=%s WHERE dataset_id=%s;",(Store.encodeDate(end_date),dataset_id))
