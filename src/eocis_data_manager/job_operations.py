@@ -48,11 +48,11 @@ class JobOperations(Transaction):
             "INSERT INTO jobs(job_id, submission_date, submitter_id, spec, state, completion_date) values (%s,%s,%s,%s,%s,%s)",
             (
                 job.getJobId(),
-                Store.encodeDateTime(job.getSubmissionDate()),
-                self.store.encrypt(job.getSubmitterId()),
+                Store.encodeDateTime(job.getSubmissionDateTime()),
+                job.getSubmitterId(),
                 json.dumps(job.getSpec()),
                 job.getState(),
-                Store.encodeDateTime(job.getCompletionDate())
+                Store.encodeDateTime(job.getCompletionDateTime())
             ))
         return self
 
@@ -92,12 +92,32 @@ class JobOperations(Transaction):
                 task.getRetryCount()))
         return self
 
+    def getTask(self, job_id, task_name):
+        """
+        retrieve and return a task given its job ID and task name.  Return None if no matching job found
+        """
+        curs = self.conn.cursor()
+        curs.execute("SELECT * FROM tasks WHERE parent_job_id = %s and task_name = %s", (job_id,task_name))
+
+        tasks = self.collectTasks(self.collectResults(curs))
+        if len(tasks) == 0:
+            return None
+        else:
+            return tasks[0]
+
     def queue_task(self, job_id, task_name):
         curs = self.conn.cursor()
         curs.execute(
             """INSERT INTO task_queue(job_id, task_name) VALUES (%s, %s);""",
             (job_id, task_name)
         )
+
+    def clear_task_queue(self):
+        curs = self.conn.cursor()
+        curs.execute(
+            """DELETE FROM task_queue;"""
+        )
+
     def get_next_task(self):
         curs = self.conn.cursor()
         curs.execute(
@@ -115,7 +135,10 @@ class JobOperations(Transaction):
         if len(results) == 0:
             return None
         else:
-            return results[0]
+            task_name = results[0]["task_name"]
+            job_id = results[0]["job_id"]
+            return self.getTask(job_id, task_name)
+
 
     def updateTask(self, task):
         """
@@ -126,8 +149,8 @@ class JobOperations(Transaction):
         curs = self.conn.cursor()
         curs.execute(
             "UPDATE tasks SET submission_date=%s,completion_date=%s,error=%s,state=%s,remote_task_id=%s,retry_count=%s WHERE parent_job_id=%s AND task_name=%s",
-            (Store.encodeDate(task.getSubmissionDate()),
-             Store.encodeDate(task.getCompletionDate()),
+            (Store.encodeDateTime(task.getSubmissionDateTime()),
+             Store.encodeDateTime(task.getCompletionDateTime()),
              task.getError(),
              task.getState(),
              task.getRemoteId(),
@@ -153,6 +176,10 @@ class JobOperations(Transaction):
         curs.execute("DELETE FROM jobs WHERE job_id=%s", (job_id,))
         # foreign key from tasks(parent_job_id) => jobs(job_id) should ensure child tasks are deleted
 
+    def removeAllJobs(self):
+        curs = self.conn.cursor()
+        curs.execute("DELETE FROM jobs;")
+
     def removeTasksForJob(self, job_id):
         """
         delete all tasks belonging to a job
@@ -161,6 +188,10 @@ class JobOperations(Transaction):
         """
         curs = self.conn.cursor()
         curs.execute("DELETE FROM tasks WHERE parent_job_id=%s", (job_id,))
+
+    def removeAllTasks(self):
+        curs = self.conn.cursor()
+        curs.execute("DELETE FROM tasks;")
 
     def existsJob(self, job_id):
         """
@@ -203,10 +234,8 @@ class JobOperations(Transaction):
         list all stored jobs
         """
         curs = self.conn.cursor()
-        curs.execute("SELECT * FROM jobs ORDER BY submission_date")
-        jobs = self.collectJobs(self.collectResults(curs))
-        jobs = list(filter(lambda job: job.getSubmitterId() == submitter_id, jobs))
-        return jobs
+        curs.execute("SELECT * FROM jobs WHERE submitter_id = %s ORDER BY submission_date", (submitter_id,))
+        return self.collectJobs(self.collectResults(curs))
 
     def listTasks(self, states=None):
         """
@@ -237,8 +266,8 @@ class JobOperations(Transaction):
         for row in results:
             task = Task(row[Store.TASK_PARENT_JOB_ID], row[Store.TASK_TASK_NAME], json.loads(row[Store.TASK_SPEC]))
             task \
-                .setCompletionDate(Store.decodeDate(row[Store.TASK_COMPLETION_DATE])) \
-                .setSubmissionDate(Store.decodeDate(row[Store.TASK_SUBMISSION_DATE])) \
+                .setCompletionDateTime(Store.decodeDate(row[Store.TASK_COMPLETION_DATE])) \
+                .setSubmissionDateTime(Store.decodeDate(row[Store.TASK_SUBMISSION_DATE])) \
                 .setError(row[Store.TASK_ERROR]) \
                 .setRemoteId(row[Store.TASK_REMOTE_TASK_ID]) \
                 .setState(row[Store.TASK_STATE]) \
@@ -251,8 +280,8 @@ class JobOperations(Transaction):
         for row in results:
             job = Job(row[Store.JOB_JOB_ID], row[Store.JOB_SUBMITTER_ID], json.loads(row[Store.JOB_SPEC]))
             job \
-                .setCompletionDate(Store.decodeDate(row[Store.JOB_COMPLETION_DATE])) \
-                .setSubmissionDate(Store.decodeDate(row[Store.JOB_SUBMISSION_DATE])) \
+                .setCompletionDateTime(Store.decodeDateTime(row[Store.JOB_COMPLETION_DATE])) \
+                .setSubmissionDateTime(Store.decodeDateTime(row[Store.JOB_SUBMISSION_DATE])) \
                 .setState(row[Store.JOB_STATE]) \
                 .setError(row[Store.JOB_ERROR])
             jobs.append(job)
@@ -281,11 +310,12 @@ class JobOperations(Transaction):
         :return: the number of tasks with the given state(s)
         """
         curs = self.conn.cursor()
+        states_string = Store.renderValueList(states)
         if job_id:
-            curs.execute("select COUNT(*) FROM tasks WHERE state IN (%s) AND parent_job_id = %s" % (
-                Store.renderValueList(states),"%"), (job_id,))
+
+            curs.execute("select COUNT(*) FROM tasks WHERE state IN (" + states_string + ") AND parent_job_id = %s", (job_id,))
         else:
-            curs.execute("select COUNT(*) FROM tasks WHERE state IN (%s)" % (Store.renderValueList(states)))
+            curs.execute("select COUNT(*) FROM tasks WHERE state IN (" + states_string + ")")
         return curs.fetchone()[0]
 
     def countTaskErrors(self, job_id):

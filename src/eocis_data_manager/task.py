@@ -27,16 +27,19 @@ Methods setRunning, setCompleted, setFailed and retry are used to move a task be
 
 Tasks can be retried if they fail, and so also have an associated retry count.
 """
-import datetime
+import uuid
+
+
+from .utils import Utils
 
 class Task:
     """
     Represent a task - a discrete executable piece of work that contributes towards the completion of a job
     """
 
-    def __init__(self,job_id=None,task_name=None,spec=None):
+    def __init__(self,job_id,task_name=None,spec=None):
         self.job_id = job_id
-        self.task_name = task_name
+        self.task_name = task_name or str(uuid.uuid4())
         self.spec = spec
         self.state = Task.STATE_NEW
         self.error = ""
@@ -47,17 +50,17 @@ class Task:
 
     def setRunning(self):
         """Move this task into the RUNNING state, noting the current UTC date/time as its submission date"""
-        self.setState(Task.STATE_RUNNING).setSubmissionDateTime(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
+        self.setState(Task.STATE_RUNNING).setSubmissionDateTime(Utils.local_now())
         return self
 
     def setCompleted(self):
         """Move this task into the COMPLETED state, noting the current UTC date/time as its completed date"""
-        self.setState(Task.STATE_COMPLETED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
+        self.setState(Task.STATE_COMPLETED).setCompletionDateTime(Utils.local_now())
         return self
 
     def setFailed(self,error=""):
         """Move this task into the FAILED state, noting the error and the current UTC date/time as its completed date"""
-        self.setState(Task.STATE_FAILED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)).setError(error)
+        self.setState(Task.STATE_FAILED).setCompletionDateTime(Utils.local_now()).setError(error)
         return self
 
     def retry(self):
@@ -94,7 +97,7 @@ class Task:
     def getSubmissionDateTime(self):
         return self.submission_date_time
 
-    def setSubmissionDateTime(self,submission_date_time):
+    def setSubmissionDateTime(self,submission_date_time=None):
         self.submission_date_time = submission_date_time
         return self
 
@@ -124,10 +127,11 @@ class Task:
             return 0
         if self.state == Task.STATE_RUNNING:
             if self.getSubmissionDateTime() is not None:
-                return (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - self.getSubmissionDateTime()).total_seconds()/3600
+                return (Utils.local_now() - self.getSubmissionDateTime()).total_seconds()/3600
             else:
                 return 0
         return (self.getCompletionDateTime() - self.getSubmissionDateTime()).total_seconds()/3600
+
 
 
     def __repr__(self):
@@ -149,3 +153,7 @@ class Task:
     @staticmethod
     def getAllStates():
         return [Task.STATE_NEW,Task.STATE_RUNNING,Task.STATE_COMPLETED,Task.STATE_FAILED]
+
+    @staticmethod
+    def create(spec, job_id, task_name=None):
+        return Task(job_id=job_id, task_name=task_name,spec=spec)

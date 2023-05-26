@@ -28,46 +28,24 @@ class Config:
     DATA_URL_PREFIX = "http://127.0.0.1:50001/data"  # URL prefix for the links to output files
 
     # database
-    DATABASE_PATH="current_jobs.db"     # the path to the jobs database (a sqlite database file)
+    DATABASE_PATH="dbname=eocis user=eocis"     # the path to the jobs database (a sqlite database file)
 
     # monitor
-    MONITOR_INTERVAL=5                  # the interval between monitor cycles, in seconds
     TASK_QUOTA=1                        # the number of regridding tasks that can run in parallel
-    JOB_QUOTA = 2                       # the number of regridding jobs that can run in parallel
+    JOB_QUOTA=2                         # the number of regridding jobs that can run in parallel
     CLEANUP_AFTER_SECS=100000           # the interval after which a job is cleaned up and its files are deleted
-    DISK_SPACE_CHECK_GB = 10           # set a threshold of free space (in Gb) that must exist in the output folder for any new tasks to be started
     MAX_TASK_RETRIES = 1                # how many times a failed task can be retried
-    CACHE_WRITABLE = False              # set to true to cache the results of any executed job
 
-    START_YEAR = 2014
-    START_MONTH = 9
-    END_YEAR = 2016
-    END_MONTH = 11
+    START_YEAR = 2022
+    START_MONTH = 1
+    END_YEAR = 2022
+    END_MONTH = 12
 
-    DEFAULT_START_YEAR = 2015
+    DEFAULT_START_YEAR = 2022
     DEFAULT_START_MONTH = 1
 
-    DEFAULT_END_YEAR = 2016
-    DEFAULT_END_MONTH = 11
-
-
-    # define the locations of the scripts (you'll need to adjust these paths)
-    REGRID_SCRIPT_PATH = "/home/dev/github/regridding_tools/global_regridding/makegriddedSSTs.py"
-    TIMESERIES_SCRIPT_PATH = "/home/dev/github/regridding_tools/timeseries_region/maketimeseriesSSTs.py"
-    REGION_SCRIPT_PATH = "/home/dev/github/regridding_tools/timeseries_region/makeregionSSTs.py"
-    INTERPRETER_PATH = "/home/dev/miniconda3/envs/cfpy37/bin/python"
-
-    # input file locations (you'll need to adjust these paths)
-    SST_CCI_ANALYSIS_L4_PATH = "/home/dev/Data/sst/data/CDR_v2/Analysis/L4/v2.1/"
-    C3S_SST_ANALYSIS_L4_PATH = "/home/dev/Data/sst/data/ICDR_v2/Analysis/L4/v2.0/"
-    SST_CCI_CLIMATOLOGY_PATH = "/home/dev/Data/sst/data/CDR_v2/Climatology/L4/v2.1/"
-    RESLICE_PATH = "/home/dev/data/Data/reslice/"
-
-    # input file locations with dust correction (you'll need to adjust these paths)
-    DUST_SST_CCI_ANALYSIS_L4_PATH = "/home/dev/Data/sst_dust/data/CDR_v2/Analysis/L4/v2.1/"
-    DUST_C3S_SST_ANALYSIS_L4_PATH = "/home/dev/Data/sst_dust/data/ICDR_v2/Analysis/L4/v2.0/"
-    DUST_SST_CCI_CLIMATOLOGY_PATH = "/home/dev/Data/sst_dust/data/CDR_v2/Climatology/L4/v2.1/"
-    DUST_RESLICE_PATH = "/home/dev/Data/sst/data/reslice/"
+    DEFAULT_END_YEAR = 2022
+    DEFAULT_END_MONTH = 12
 
     # output file location
     OUTPUT_PATH = "/home/dev/joboutput"  # the path to the location to store job output files

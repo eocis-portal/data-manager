@@ -43,14 +43,14 @@ class Job:
     """
 
     @staticmethod
-    def create(spec):
+    def create(spec, job_id=""):
         """factory method to create and return a freshly submitted job based on an email address and specification"""
-        job_id = str(uuid.uuid4())
-        job = Job(job_id,spec["submitter_id"],spec)
-        job.setSubmissionDate(datetime.datetime.now(datetime.timezone.utc))
+        job_id = job_id or str(uuid.uuid4())
+        job = Job(job_id,spec["SUBMITTER_ID"],spec)
+        job.setSubmissionDateTime(datetime.datetime.now(datetime.timezone.utc))
         return job
 
-    def __init__(self, job_id=None, submitter_id=None, spec=None):
+    def __init__(self, job_id, submitter_id, spec):
         self.job_id = job_id
         self.submitter_id = submitter_id
         self.spec = spec

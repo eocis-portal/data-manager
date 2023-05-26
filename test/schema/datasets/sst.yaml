@@ -1,14 +1,16 @@
 name: "Sea Surface Temperatures"
 temporal_resolution: "daily"
 spatial_resolution: "0.05"
-start_date: "01-09-1981"
+start_date: "01-01-2022"
 end_date: "31-12-2022"
-location: "/path/to/data"
+location: "/home/dev/data/regrid/sst/{YEAR}/*/*/*.nc"
 spec:
-  key1: value
-  key2: value
+  metadata:
+    product: SST
+    version: "3.0"
+    level: L4
 variables:
-  sst:
+  analysed_sst:
     name: Sea Surface Temperature
   sst_uncertainty:
     name: Sea Surface Temperature Uncertainty

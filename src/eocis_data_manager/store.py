@@ -84,7 +84,7 @@ class Store:
 
     SCHEMA = "V1"  # version of the database schema
 
-    def __init__(self, connection_string):
+    def __init__(self, connection_string="dbname=eocis user=eocis"):
         """
         Implement a persistent store based on a PostgreSQL database
         :param connection_string: string containing details of the database to connect to

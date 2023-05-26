@@ -81,13 +81,13 @@ class DataSet:
             start_date = parse_date(dataset_obj["start_date"])
             end_date = parse_date(dataset_obj["end_date"])
             location = dataset_obj["location"]
-            spec = dataset_obj.get("spec",{})
+            dataset_spec = dataset_obj.get("spec",{})
             variable_list = dataset_obj.get("variables",{})
             variables = []
             for (id,variable) in variable_list.items():
                 name = variable["name"]
-                spec = variable.get("spec",{})
-                variables.append(Variable(id,name,spec))
+                variable_spec = variable.get("spec",{})
+                variables.append(Variable(id,name,variable_spec))
 
             return DataSet(dataset_id, dataset_name=dataset_name,
                            temporal_resolution=temporal_resolution,
@@ -95,7 +95,7 @@ class DataSet:
                            start_date=start_date,
                            end_date=end_date,
                            location=location,
-                           spec=spec,
+                           spec=dataset_spec,
                            variables=variables)
 
     @staticmethod
