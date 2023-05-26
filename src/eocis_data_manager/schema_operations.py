@@ -145,3 +145,12 @@ class SchemaOperations(Transaction):
                         spec=json.loads(row["spec"]), variables=variables)
             datasets.append(d)
         return datasets
+
+    def getDataset(self,dataset_id):
+        curs = self.conn.cursor()
+        curs.execute("SELECT * FROM datasets WHERE dataset_id=%s", (dataset_id,))
+
+        ds_list = self.collectDataSets(self.collectResults(curs))
+        if len(ds_list) != 0:
+            return None
+        return ds_list[0]
