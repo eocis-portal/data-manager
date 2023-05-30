@@ -54,7 +54,7 @@ class DataSet:
     VALID_TEMPORAL_RESOLUTIONS = ["daily","pentad","dekad","monthly","yearly"]
     VALID_SPATIAL_RESOLUTIONS = ["0.05","0.1","0.25","0.5","1"]
 
-    def __init__(self, dataset_id:str, dataset_name:str, temporal_resolution:str, spatial_resolution:str, start_date:datetime.date, end_date:datetime.date, location:str, spec:dict, variables:list[Variable]):
+    def __init__(self, dataset_id:str, dataset_name:str, temporal_resolution:str, spatial_resolution:str, start_date:datetime.date, end_date:datetime.date, location:str, spec:dict, variables:list[Variable], enabled:bool=True):
         self.dataset_id = dataset_id
         self.dataset_name = dataset_name
         if temporal_resolution not in DataSet.VALID_TEMPORAL_RESOLUTIONS:
@@ -68,6 +68,7 @@ class DataSet:
         self.location = location
         self.spec = spec
         self.variables = variables
+        self.enabled = enabled
 
     @staticmethod
     def load_dataset_from_file(path) -> "DataSet":
@@ -75,11 +76,11 @@ class DataSet:
         dataset_id = os.path.splitext(filename)[0]
         with open(path) as f:
             dataset_obj = yaml.load(f.read(),Loader=Loader)
+            enabled = dataset_obj.get("enabled",True)
             dataset_name = dataset_obj["name"]
             temporal_resolution = dataset_obj["temporal_resolution"]
             spatial_resolution = dataset_obj["spatial_resolution"]
             start_date = parse_date(dataset_obj["start_date"])
-            end_date = parse_date(dataset_obj["end_date"])
             location = dataset_obj["location"]
             dataset_spec = dataset_obj.get("spec",{})
             variable_list = dataset_obj.get("variables",{})
@@ -93,10 +94,11 @@ class DataSet:
                            temporal_resolution=temporal_resolution,
                            spatial_resolution=spatial_resolution,
                            start_date=start_date,
-                           end_date=end_date,
+                           end_date=None,
                            location=location,
                            spec=dataset_spec,
-                           variables=variables)
+                           variables=variables,
+                           enabled=enabled)
 
     @staticmethod
     def load_datasets(folder) -> list["DataSet"]:
@@ -104,7 +106,8 @@ class DataSet:
         for filename in os.listdir(folder):
             if filename.endswith(".yaml"):
                 path = os.path.join(folder, filename)
-                datasets.append(DataSet.load_dataset_from_file(path))
+                dataset = DataSet.load_dataset_from_file(path)
+                datasets.append(dataset)
         return datasets
 
     def __repr__(self) -> str:

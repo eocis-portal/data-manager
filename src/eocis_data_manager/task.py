@@ -45,105 +45,95 @@ class Task:
         self.error = ""
         self.submission_date_time = None
         self.completion_date_time = None
-        self.remote_id = ""
         self.retrycount = 0
 
-    def setRunning(self):
+    def set_running(self):
         """Move this task into the RUNNING state, noting the current UTC date/time as its submission date"""
-        self.setState(Task.STATE_RUNNING).setSubmissionDateTime(Utils.local_now())
+        self.set_state(Task.STATE_RUNNING).set_submission_datetime(Utils.local_now())
         return self
 
-    def setCompleted(self):
+    def set_completed(self):
         """Move this task into the COMPLETED state, noting the current UTC date/time as its completed date"""
-        self.setState(Task.STATE_COMPLETED).setCompletionDateTime(Utils.local_now())
+        self.set_state(Task.STATE_COMPLETED).set_completion_datetime(Utils.local_now())
         return self
 
-    def setFailed(self,error=""):
+    def set_failed(self, error=""):
         """Move this task into the FAILED state, noting the error and the current UTC date/time as its completed date"""
-        self.setState(Task.STATE_FAILED).setCompletionDateTime(Utils.local_now()).setError(error)
+        self.set_state(Task.STATE_FAILED).set_completion_datetime(Utils.local_now()).set_error(error)
         return self
 
     def retry(self):
         """Move this task into the NEW state, incrementing the retry count and removing any associated submission/completion dates and error message"""
-        self.setState(Task.STATE_NEW).setCompletionDateTime(None).setSubmissionDateTime(None).setRetryCount(self.getRetryCount()+1).setError("")
+        self.set_state(Task.STATE_NEW).set_completion_datetime(None).set_submission_datetime(None).set_retry_count(self.get_retry_count() + 1).set_error("")
 
-    def getJobId(self):
+    def get_job_id(self):
         return self.job_id
 
-    def getTaskName(self):
+    def get_task_name(self):
         return self.task_name
 
-    def setTaskName(self,task_name):
-        self.task_name = task_name
+    def set_task_name(self, new_task_name):
+        self.task_name = new_task_name
         return self
 
-    def getError(self):
+    def get_error(self):
         return self.error
 
-    def setError(self,error):
+    def set_error(self, error):
         self.error = error
         return self
 
-    def getRetryCount(self):
+    def get_retry_count(self):
         return self.retrycount
 
-    def setRetryCount(self,retrycount):
+    def set_retry_count(self, retrycount):
         self.retrycount = retrycount
         return self
 
-    def getSpec(self):
+    def get_spec(self):
         return self.spec
 
-    def getSubmissionDateTime(self):
+    def get_submission_datetime(self):
         return self.submission_date_time
 
-    def setSubmissionDateTime(self,submission_date_time=None):
+    def set_submission_datetime(self, submission_date_time=None):
         self.submission_date_time = submission_date_time
         return self
 
-    def getCompletionDateTime(self):
+    def get_completion_datetime(self):
         return self.completion_date_time
 
-    def setCompletionDateTime(self,completion_date_time=None):
+    def set_completion_datetime(self, completion_date_time=None):
         self.completion_date_time = completion_date_time
         return self
 
-    def getState(self):
+    def get_state(self):
         return self.state
 
-    def setState(self,state):
+    def set_state(self, state):
         self.state = state
         return self
 
-    def getRemoteId(self):
-        return self.remote_id
-
-    def setRemoteId(self,remote_id):
-        self.remote_id = remote_id
-        return self
-
-    def getDurationHours(self):
+    def get_duration_hours(self):
         if self.state == Task.STATE_NEW:
             return 0
         if self.state == Task.STATE_RUNNING:
-            if self.getSubmissionDateTime() is not None:
-                return (Utils.local_now() - self.getSubmissionDateTime()).total_seconds()/3600
+            if self.get_submission_datetime() is not None:
+                return (Utils.local_now() - self.get_submission_datetime()).total_seconds() / 3600
             else:
                 return 0
-        return (self.getCompletionDateTime() - self.getSubmissionDateTime()).total_seconds()/3600
-
+        return (self.get_completion_datetime() - self.get_submission_datetime()).total_seconds() / 3600
 
 
     def __repr__(self):
-        status = self.getState()
+        status = self.get_state()
         status_msg = status
         if status == Task.STATE_RUNNING:
-            rcount = self.getRetryCount()
-            pid = self.getRemoteId()
-            status_msg += "(try=%d, pid=%s)"%(rcount,pid)
+            rcount = self.get_retry_count()
+            status_msg += "(try=%d)"%rcount
         if status == Task.STATE_FAILED:
-            status_msg += "(%s)"%(self.getError())
-        return "%s %s %0.2f hours"%(self.getTaskName(),status_msg,self.getDurationHours())
+            status_msg += "(%s)"%(self.get_error())
+        return "%s %s %0.2f hours"%(self.get_task_name(), status_msg, self.get_duration_hours())
 
     STATE_NEW = "NEW"
     STATE_RUNNING = "RUNNING"

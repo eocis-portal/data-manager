@@ -27,15 +27,12 @@ The bundle module deals with the representation of a logical bundle of data, con
 
 class Bundle:
 
-    def __init__(self, bundle_id:str, bundle_name:str, spec:dict, dataset_ids:list[str], minx:float, miny:float, maxx:float, maxy:float):
+    def __init__(self, bundle_id:str, bundle_name:str, spec:dict, dataset_ids:list[str], enabled=True):
         self.bundle_id = bundle_id
         self.bundle_name = bundle_name
         self.spec = spec
         self.dataset_ids = dataset_ids
-        self.minx = minx
-        self.miny = miny
-        self.maxx = maxx
-        self.maxy = maxy
+        self.enabled = True
 
     @staticmethod
     def load_bundle_from_file(path:str) -> "Bundle":
@@ -43,18 +40,15 @@ class Bundle:
         bundle_id = os.path.splitext(filename)[0]
         with open(path) as f:
             bundle_obj = yaml.load(f.read(),Loader=Loader)
+            enabled = bundle_obj.get("enabled",True)
             bundle_name = bundle_obj["name"]
             bundle_spec = bundle_obj.get("spec",{})
             dataset_ids = bundle_obj.get("datasets",[])
-            minx = bundle_obj.get("minx")
-            miny = bundle_obj.get("miny")
-            maxx = bundle_obj.get("maxx")
-            maxy = bundle_obj.get("maxy")
             return Bundle(bundle_id, bundle_name=bundle_name, spec=bundle_spec,
-                          dataset_ids=dataset_ids, minx=minx, miny=miny, maxx=maxx, maxy=maxy)
+                          dataset_ids=dataset_ids, enabled=enabled)
 
     @staticmethod
-    def load_bundles(folder) -> list["Bundle"]:
+    def load_bundles(folder:str) -> list["Bundle"]:
         bundles = []
         for filename in os.listdir(folder):
             if filename.endswith(".yaml"):
@@ -66,17 +60,12 @@ class Bundle:
         import json
         spec = json.dumps(self.spec)
         dataset_ids = json.dumps(self.dataset_ids)
-        return f"Bundle({self.bundle_id},{self.bundle_name},{spec},{dataset_ids}," \
-               f"{self.minx},{self.miny},{self.maxx},{self.maxy})"
+        return f"Bundle({self.bundle_id},{self.bundle_name},{spec},{dataset_ids})"
 
     def __eq__(self,other) -> bool:
         return self.bundle_id == other.bundle_id \
             and self.bundle_name == other.bundle_name \
             and sorted(self.dataset_ids) == sorted(other.dataset_ids) \
-            and self.spec == other.spec \
-            and self.minx == other.minx \
-            and self.maxx == other.maxx \
-            and self.miny == other.miny \
-            and self.maxy == other.maxy
+            and self.spec == other.spec
 
 

@@ -18,8 +18,6 @@
 
 """Defines a service configuration useful for service development and debugging on a developer's laptop"""
 
-from os import environ
-
 class Config:
 
     # web service configuration

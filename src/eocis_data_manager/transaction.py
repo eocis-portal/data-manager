@@ -16,12 +16,32 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from eocis_data_manager.store import Store
-from eocis_data_manager.job_operations import JobOperations
+class Transaction:
 
-if __name__ == '__main__':
-    store = Store()
-    with JobOperations(store) as jo:
-        jo.clear_task_queue()
-        jo.remove_all_tasks()
-        jo.remove_all_jobs()
+    def __init__(self, store):
+        self.store = store
+        self.conn = store.open_connection()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if exc_type is None:
+            self.commit()
+            return True
+        else:
+            self.rollback()
+            return False
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def collect_results(self, curs):
+        rows = []
+        column_names = [column[0] for column in curs.description]
+        for row in curs.fetchall():
+            rows.append({v1: v2 for (v1, v2) in zip(column_names, row)})
+        return rows

@@ -28,25 +28,34 @@ import logging
 from psycopg2 import connect
 import datetime
 
+from eocis_data_manager.transaction import Transaction
+
 class Store:
     """
     Implement a persistent store and methods to add and manipulate data_bundles, datasets, variables, jobs and tasks
 
-    Tables:
+    Database Schema
+    ===============
+
+    This housekeeping table records the database schema information, and checks that the software is not
+    trying to use an inconsistent database
 
     metadata:
-        schema - stores the database schema version used in this database
-        encrypted_schema - stores the encrypted schema
+        schema - specifies the version of the database schema currently loaded
+        creation_date - the date on which the database schema was populated
 
-    data_bundles:
+    Data Schema Tables
+    ==================
+
+    These tables describe the format and location of the datasets available for processing
+
+    bundles:
         bundle_id - a unique ID for each bundle
         bundle_name - the name of the bundle
         spec - JSON encoded spec for bundle
-        minx, miny, maxx, maxy - extent in the relevant coordinate system
 
     datasets:
         dataset_id - a unique ID for each dataset
-        bundle_id - the name of the bundle to whcih this dataset belongs
         dataset_name - the name of the dataset
         temporal_resolution - the resolution in time, eg "daily", "monthly"
         spatial_resolution - the resolution in degrees, eg 0.05
@@ -55,11 +64,21 @@ class Store:
         location - the location of this bundle's files
         spec - JSON encoded spec for dataset
 
+    dataset_bundle:
+        bundle_id - id of a bundle
+        dataset_id - id of a dataset
+
     variables:
         variable_id - a unique ID for variable
         variable_name - name of the variable
         dataset_id - the dataset to which this variable belongs
         spec - JSON encoded spec for variable
+
+    Activity Tables
+    ===============
+
+    These tables record the jobs submitted by users, the tasks that each job is split into, and
+    a queue of tasks that are awaiting processing
 
     jobs:
         job_id - a unique UUID generated for each job
@@ -80,9 +99,16 @@ class Store:
         completion_date - the timestamp at which the task was completed
         error - set to a non-empty error string if the task failed
         retrycount - number of attempts made to retry a failed job
+
+    task_queue:
+        id - auto-generated integer id
+        queue_time - auto-generated time at which a task was placed in the queue
+        job_id - id of the job to which the task belongs
+        task_name - name of the task within the job
+
     """
 
-    SCHEMA = "V1"  # version of the database schema
+    SCHEMA = "V1"
 
     def __init__(self, connection_string="dbname=eocis user=eocis"):
         """
@@ -102,10 +128,6 @@ class Store:
                         bundle_id text,
                         bundle_name text, 
                         spec text,
-                        minx real,
-                        miny real,
-                        maxx real,
-                        maxy real,
                         PRIMARY KEY(bundle_id));''')
 
         curs.execute('''CREATE TABLE IF NOT EXISTS datasets(
@@ -176,17 +198,17 @@ class Store:
 
         curs.execute('''INSERT INTO metadata(schema,creation_date) 
                 SELECT %s, %s 
-                WHERE NOT EXISTS(SELECT 1 FROM metadata);''', (Store.SCHEMA, Store.encodeDate(datetime.datetime.now())))
+                WHERE NOT EXISTS(SELECT 1 FROM metadata);''', (Store.SCHEMA, Store.encode_date(datetime.datetime.now())))
 
         # check the metadata is consistent, raise an exception if not
-        self.checkMetadata(conn)
+        self.check_metadata(conn)
 
         conn.commit()
 
     def open_connection(self):
         return connect(self.connection_string)
 
-    def checkMetadata(self, conn):
+    def check_metadata(self, conn):
         curs = conn.cursor()
         curs.execute("SELECT schema, creation_date FROM metadata")
         results = curs.fetchall()
@@ -226,7 +248,7 @@ class Store:
     TASK_RETRY_COUNT = "retry_count"
 
     @staticmethod
-    def encodeDate(dt):
+    def encode_date(dt):
         """Encode a datetime object as a string, compatible with Store.decodeDate"""
         if dt is None:
             return ""
@@ -234,7 +256,7 @@ class Store:
             return datetime.datetime.strftime(dt, Store.DATE_FORMAT)
 
     @staticmethod
-    def decodeDate(s):
+    def decode_date(s):
         """Decode a string to a datetime object, compatible with Store.encodeDate"""
         if s == "" or s is None:
             return None
@@ -242,7 +264,7 @@ class Store:
             return datetime.datetime.strptime(s, Store.DATE_FORMAT).replace(tzinfo=None).date()
 
     @staticmethod
-    def encodeDateTime(dt):
+    def encode_datetime(dt):
         """Encode a datetime object as a string, compatible with Store.decodeDateTime"""
         if dt is None:
             return ""
@@ -250,7 +272,7 @@ class Store:
             return datetime.datetime.strftime(dt, Store.TIMESTAMP_FORMAT)
 
     @staticmethod
-    def decodeDateTime(s):
+    def decode_datetime(s):
         """Decode a string to a datetime object, compatible with Store.encodeDateTime"""
         if s == "" or s is None:
             return None
@@ -258,38 +280,9 @@ class Store:
             return datetime.datetime.strptime(s, Store.TIMESTAMP_FORMAT).replace(tzinfo=None)
 
     @staticmethod
-    def renderValueList(values):
+    def render_value_list(values):
         return ",".join(map(lambda x: "'" + x + "'", values))
 
 
 
-class Transaction:
-
-    def __init__(self, store):
-        self.store = store
-        self.conn = store.open_connection()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        if exc_type is None:
-            self.commit()
-            return True
-        else:
-            self.rollback()
-            return False
-
-    def commit(self):
-        self.conn.commit()
-
-    def rollback(self):
-        self.conn.rollback()
-
-    def collectResults(self, curs):
-        rows = []
-        column_names = [column[0] for column in curs.description]
-        for row in curs.fetchall():
-            rows.append({v1: v2 for (v1, v2) in zip(column_names, row)})
-        return rows
 

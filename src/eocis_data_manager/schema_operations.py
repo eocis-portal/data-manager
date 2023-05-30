@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import datetime
 #    EOCIS data-manager
 #    Copyright (C) 2020-2023  National Centre for Earth Observation (NCEO)
 #
@@ -19,7 +19,8 @@
 import os.path
 import json
 
-from eocis_data_manager.store import Store, Transaction
+from eocis_data_manager.store import Store
+from eocis_data_manager.transaction import Transaction
 
 from eocis_data_manager.bundle import Bundle
 from eocis_data_manager.dataset import DataSet, Variable
@@ -42,24 +43,24 @@ class SchemaOperations(Transaction):
         datasets = DataSet.load_datasets(os.path.join(path, "datasets"))
         bundles = Bundle.load_bundles(os.path.join(path, "bundles"))
         for dataset in datasets:
-            self.createDataSet(dataset)
+            if dataset.enabled:
+                print(f"Adding dataset: {dataset}")
+                self.create_dataset(dataset)
         for bundle in bundles:
-            self.createBundle(bundle)
+            if bundle.enabled:
+                print(f"Adding bundle: {bundle}")
+                self.create_bundle(bundle)
 
         return self
 
-    def createBundle(self, bundle):
+    def create_bundle(self, bundle):
         curs = self.conn.cursor()
         curs.execute(
-            "INSERT INTO bundles(bundle_id,bundle_name,spec,minx,miny,maxx,maxy) values (%s,%s,%s,%s,%s,%s,%s)",
+            "INSERT INTO bundles(bundle_id,bundle_name,spec) values (%s,%s,%s)",
             (
                 bundle.bundle_id,
                 bundle.bundle_name,
-                json.dumps(bundle.spec),
-                bundle.minx,
-                bundle.miny,
-                bundle.maxx,
-                bundle.maxy
+                json.dumps(bundle.spec)
             ))
 
         for dataset_id in bundle.dataset_ids:
@@ -70,7 +71,7 @@ class SchemaOperations(Transaction):
                     dataset_id
                 ))
 
-    def createDataSet(self, dataset):
+    def create_dataset(self, dataset):
         curs = self.conn.cursor()
         curs.execute(
             "INSERT INTO datasets(dataset_id, dataset_name, temporal_resolution, spatial_resolution,start_date,end_date,location,spec) values (%s,%s,%s,%s,%s,%s,%s,%s)",
@@ -79,7 +80,7 @@ class SchemaOperations(Transaction):
                 dataset.dataset_name,
                 dataset.temporal_resolution,
                 dataset.spatial_resolution,
-                Store.encodeDate(dataset.start_date),
+                Store.encode_date(dataset.start_date),
                 '',
                 dataset.location,
                 json.dumps(dataset.spec),
@@ -94,67 +95,82 @@ class SchemaOperations(Transaction):
                              json.dumps(variable.spec)
                          ))
 
-    def listBundles(self):
+
+    def list_bundles(self):
         """
         list all stored bundles
         """
 
         curs = self.conn.cursor()
         curs.execute("SELECT * FROM bundles")
-        return self.collectBundles(self.collectResults(curs))
+        return self.collect_bundles(self.collect_results(curs))
 
-    def collectBundles(self, results):
+    def collect_bundles(self, results):
         bundles = []
         for row in results:
             bundle_id = row["bundle_id"]
             curs = self.conn.cursor()
             curs.execute("SELECT * FROM dataset_bundle WHERE bundle_id=%s", (bundle_id,))
             dataset_ids = []
-            for r in self.collectResults(curs):
+            for r in self.collect_results(curs):
                 dataset_ids.append(r["dataset_id"])
-            b = Bundle(bundle_id, bundle_name=row["bundle_name"], spec=json.loads(row["spec"]), dataset_ids=dataset_ids,
-                       minx=row["minx"],miny=row["miny"],maxx=row["maxx"],maxy=row["maxy"])
+            b = Bundle(bundle_id, bundle_name=row["bundle_name"], spec=json.loads(row["spec"]), dataset_ids=dataset_ids)
             bundles.append(b)
         return bundles
 
-    def listDataSets(self):
+    def get_bundle(self, bundle_id):
+        curs = self.conn.cursor()
+        curs.execute("SELECT * FROM bundles WHERE bundle_id=%s", (bundle_id,))
+        bundle_list = self.collect_bundles(self.collect_results(curs))
+        if len(bundle_list) != 1:
+            return None
+        return bundle_list[0]
+
+    def list_datasets(self):
         """
         list all stored datasets/variables
         """
-
         curs = self.conn.cursor()
         curs.execute("SELECT * FROM datasets")
-        return self.collectDataSets(self.collectResults(curs))
+        return self.collect_datasets(self.collect_results(curs))
 
-    def collectDataSets(self, results):
+    def collect_datasets(self, results):
         datasets = []
         for row in results:
             dataset_id = row["dataset_id"]
             curs = self.conn.cursor()
             curs.execute("SELECT * FROM variables WHERE dataset_id=%s", (dataset_id,))
             variables = []
-            for r in self.collectResults(curs):
+            for r in self.collect_results(curs):
                 v = Variable(r["variable_id"], r["variable_name"], json.loads(r["spec"]))
                 variables.append(v)
             d = DataSet(dataset_id, dataset_name=row["dataset_name"],
                         temporal_resolution=row["temporal_resolution"],
                         spatial_resolution=row["spatial_resolution"],
-                        start_date=Store.decodeDate(row["start_date"]),
-                        end_date=Store.decodeDate(row["end_date"]),
+                        start_date=Store.decode_date(row["start_date"]),
+                        end_date=Store.decode_date(row["end_date"]),
                         location=row["location"],
                         spec=json.loads(row["spec"]), variables=variables)
             datasets.append(d)
         return datasets
 
-    def updateEndDate(self, dataset_id, end_date):
+    def get_dataset_end_dates(self) -> dict[str, datetime.datetime]:
         curs = self.conn.cursor()
-        curs.execute("UPDATE datasets SET end_date=%s WHERE dataset_id=%s;",(Store.encodeDate(end_date),dataset_id))
+        curs.execute("SELECT dataset_id, end_date FROM datasets;")
+        results = {}
+        for r in self.collect_results(curs):
+            results[r["dataset_id"]] = Store.decode_date(r["end_date"])
+        return results
 
-    def getDataset(self,dataset_id):
+    def update_dataset_end_date(self, dataset_id:str, end_date:datetime.datetime):
+        curs = self.conn.cursor()
+        curs.execute("UPDATE datasets SET end_date=%s WHERE dataset_id=%s;", (Store.encode_date(end_date), dataset_id))
+
+    def get_dataset(self, dataset_id):
         curs = self.conn.cursor()
         curs.execute("SELECT * FROM datasets WHERE dataset_id=%s", (dataset_id,))
 
-        ds_list = self.collectDataSets(self.collectResults(curs))
+        ds_list = self.collect_datasets(self.collect_results(curs))
         if len(ds_list) != 1:
             return None
         return ds_list[0]

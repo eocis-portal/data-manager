@@ -1,7 +1,17 @@
 name: "Ocean Data Bundle"
 spec:
-  key1: value
-  key2: value
+  spatial_resolutions:
+    - "0.05"
+    - "0.1"
+    - "0.2"
+  temporal_resolutions:
+    - "daily"
+    - "monthly"
+  bounds:
+    minx: -180
+    maxx: 180
+    miny: -90
+    maxy: 90
 datasets:
   - sst
-  - oc
+#  - oc

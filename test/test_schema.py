@@ -43,9 +43,9 @@ class TestSchema(unittest.TestCase):
             t.populate_schema(schema_folder)
 
             # retrieve bundle and dataset information
-            bundles = t.listBundles()
+            bundles = t.list_bundles()
             self.assertEqual(1,len(bundles))
-            datasets = t.listDataSets()
+            datasets = t.list_datasets()
             self.assertEqual(2,len(datasets))
             t.commit()
 

@@ -18,10 +18,27 @@
 
 from eocis_data_manager.store import Store
 from eocis_data_manager.job_operations import JobOperations
+from eocis_data_manager.schema_operations import SchemaOperations
 
 if __name__ == '__main__':
     store = Store()
+    print("Schema:")
+    with SchemaOperations(store) as so:
+        print("\tBundles:")
+        for bundle in so.list_bundles():
+            print(f"\t\t{bundle}")
+        print("\tDatasets:")
+        for dataset in so.list_datasets():
+            print(f"\t\t{dataset}")
+
+    print("Jobs/Tasks:")
     with JobOperations(store) as jo:
-        jo.clear_task_queue()
-        jo.remove_all_tasks()
-        jo.remove_all_jobs()
+        print("\tJobs:")
+        for job in jo.list_jobs():
+            print(f"\t\t{job}")
+        print("\tTasks:")
+        for task in jo.list_tasks():
+            print(f"\t\t{task}")
+        print("\tTask Queue:")
+        for task_id in jo.get_queued_taskids():
+            print(f"\t\t{task_id}")

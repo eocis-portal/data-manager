@@ -29,7 +29,7 @@ A job object also stores the email-address of the user requesting the job
 import uuid
 import datetime
 from .task import Task
-
+import math
 import os
 
 from .config import Config
@@ -47,7 +47,7 @@ class Job:
         """factory method to create and return a freshly submitted job based on an email address and specification"""
         job_id = job_id or str(uuid.uuid4())
         job = Job(job_id,spec["SUBMITTER_ID"],spec)
-        job.setSubmissionDateTime(datetime.datetime.now(datetime.timezone.utc))
+        job.set_submission_date_time(datetime.datetime.now(datetime.timezone.utc))
         return job
 
     def __init__(self, job_id, submitter_id, spec):
@@ -59,68 +59,72 @@ class Job:
         self.completion_date_time = None
         self.error = ""
 
-    def getJobId(self):
+    def get_job_id(self):
         return self.job_id
 
-    def setRunning(self):
+    def set_running(self):
         """Move this job into the RUNNING state. This transition is usually triggered when the job's tasks have been created."""
-        self.setState(Job.STATE_RUNNING)
+        self.set_state(Job.STATE_RUNNING)
         return self
 
-    def setCompleted(self):
+    def set_completed(self):
         """Move this job into the COMPLETED state, noting the current UTC date/time as its completed date"""
-        self.setState(Job.STATE_COMPLETED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc))
+        self.set_state(Job.STATE_COMPLETED).set_completion_datetime(datetime.datetime.now(datetime.timezone.utc))
         return self
 
-    def setFailed(self,error=""):
+    def set_failed(self, error=""):
         """Move this job into the FAILED state, noting the error and the current UTC date/time as its completed date"""
-        self.setState(Job.STATE_FAILED).setCompletionDateTime(datetime.datetime.now(datetime.timezone.utc)).setError(error)
+        self.set_state(Job.STATE_FAILED).set_completion_datetime(datetime.datetime.now(datetime.timezone.utc)).set_error(error)
         return self
 
-    def getSubmitterId(self):
+    def get_submitter_id(self):
         return self.submitter_id
 
-    def getSpec(self):
+    def get_spec(self):
         return self.spec
 
-    def getSubmissionDateTime(self):
+    def get_submission_datetime(self):
         return self.submission_date_time
 
-    def setSubmissionDateTime(self, submission_date_time):
+    def set_submission_datetime(self, submission_date_time):
         self.submission_date_time = submission_date_time
         return self
 
-    def getCompletionDateTime(self):
+    def get_completion_datetime(self):
         return self.completion_date_time
 
-    def setCompletionDateTime(self, completion_date_time):
+    def set_completion_datetime(self, completion_date_time):
         self.completion_date_time = completion_date_time
         return self
 
-    def getState(self):
+    def get_state(self):
         return self.state
 
-    def setState(self, state):
+    def set_state(self, state):
         self.state = state
         return self
 
-    def getError(self):
+    def get_error(self):
         return self.error
 
-    def setError(self,error):
+    def set_error(self, error):
         self.error = error
         return self
 
-    def getDurationHours(self):
+    def get_duration_hours(self):
         if self.state == Job.STATE_NEW or self.state == Job.STATE_RUNNING:
-            return (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - self.getSubmissionDateTime()).total_seconds()/3600
+            return (datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - self.get_submission_datetime()).total_seconds() / 3600
         else:
-            return (self.getCompletionDateTime() - self.getSubmissionDateTime()).total_seconds()/3600
+            completed_dt = self.get_completion_datetime()
+            if completed_dt is not None:
+                return (completed_dt - self.get_submission_datetime()).total_seconds() / 3600
+            else:
+                return math.nan # should not really be reachable
 
-    def getExpiryDate(self):
+    def get_expiry_date(self):
         if self.state not in [Job.STATE_COMPLETED,Job.STATE_FAILED]:
             return None
-        return self.getCompletionDateTime()+datetime.timedelta(seconds=Config.CLEANUP_AFTER_SECS)
+        return self.get_completion_datetime() + datetime.timedelta(seconds=Config.CLEANUP_AFTER_SECS)
 
     STATE_NEW = "NEW"
     STATE_RUNNING = "RUNNING"
@@ -128,22 +132,22 @@ class Job:
     STATE_FAILED = "FAILED"
 
     def __repr__(self):
-        status = self.getState()
+        status = self.get_state()
         if status == Job.STATE_FAILED:
-            status += "(%s)" % (self.getError())
-        return "%s %s %s %0.2f hours"%(self.getJobId(),self.getSubmitterId(),status,self.getDurationHours())
+            status += "(%s)" % (self.get_error())
+        return "%s %s %s %0.2f hours"%(self.get_job_id(), self.get_submitter_id(), status, self.get_duration_hours())
 
     def dump(self):
         attrs = {
-            "id":           self.getJobId(),
+            "id":           self.get_job_id(),
             "submitter":    self.submitter_id,
-            "spec":         json.dumps(self.getSpec()),
-            "state":        self.getState(),
-            "submitted":    str(self.getSubmissionDateTime()),
-            "completed":    str(self.getCompletionDateTime()),
-            "expiry":       str(self.getExpiryDate()),
-            "duration":     self.getDurationHours(),
-            "error":        self.getError()
+            "spec":         json.dumps(self.get_spec()),
+            "state":        self.get_state(),
+            "submitted":    str(self.get_submission_date_time()),
+            "completed":    str(self.get_completion_date_time()),
+            "expiry":       str(self.get_expiry_date()),
+            "duration":     self.get_duration_hours(),
+            "error":        self.get_error()
         }
         return """Job %(id)s
             \temail:        %(email)s
@@ -156,7 +160,7 @@ class Job:
             \terror:        %(error)s\n\n"""%attrs
 
     @staticmethod
-    def getAllStates():
+    def get_all_states():
         return [Job.STATE_NEW,Job.STATE_RUNNING,Job.STATE_COMPLETED,Job.STATE_FAILED]
 
     def serialise(self,transaction):
@@ -164,14 +168,14 @@ class Job:
         data = {}
         data["id"] = self.job_id
         data["state"] = self.state
-        data["error"] = self.getError()
-        data["duration"]  = self.getDurationHours()
-        data["submission_date"] = str(self.getSubmissionDateTime())
-        data["completion_date"] = str(self.getCompletionDateTime()) if self.state == Job.STATE_COMPLETED else ""
-        data["duration"] = self.getDurationHours()
-        data["new_tasks"] = transaction.countTasksByState([Task.STATE_NEW],self.getJobId())
-        data["running_tasks"] = transaction.countTasksByState([Task.STATE_RUNNING],self.getJobId())
-        data["completed_tasks"] = transaction.countTasksByState([Task.STATE_COMPLETED],self.getJobId())
-        data["failed_tasks"] = transaction.countTasksByState([Task.STATE_FAILED],self.getJobId())
-        data["expiry_date"] = str(self.getExpiryDate()) if self.state in [Job.STATE_COMPLETED,Job.STATE_FAILED] else ""
+        data["error"] = self.get_error()
+        data["duration"]  = self.get_duration_hours()
+        data["submission_date"] = str(self.get_submission_date_time())
+        data["completion_date"] = str(self.get_completion_date_time()) if self.state == Job.STATE_COMPLETED else ""
+        data["duration"] = self.get_duration_hours()
+        data["new_tasks"] = transaction.count_tasks_by_state([Task.STATE_NEW], self.get_job_id())
+        data["running_tasks"] = transaction.count_tasks_by_state([Task.STATE_RUNNING], self.get_job_id())
+        data["completed_tasks"] = transaction.count_tasks_by_state([Task.STATE_COMPLETED], self.get_job_id())
+        data["failed_tasks"] = transaction.count_tasks_by_state([Task.STATE_FAILED], self.get_job_id())
+        data["expiry_date"] = str(self.get_expiry_date()) if self.state in [Job.STATE_COMPLETED, Job.STATE_FAILED] else ""
         return data
