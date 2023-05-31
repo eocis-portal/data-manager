@@ -47,4 +47,5 @@ class Config:
 
     # output file location
     OUTPUT_PATH = "/home/dev/joboutput"  # the path to the location to store job output files
+    OUTPUT_FILENAME_PATTERN = "{Y}{m}{d}{H}{M}{S}-EOCIS-{LEVEL}-{PRODUCT}-v{VERSION}-fv01.0"
 

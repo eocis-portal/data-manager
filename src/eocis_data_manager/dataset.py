@@ -22,6 +22,8 @@ import yaml
 import datetime
 from yaml import Loader
 
+from .time_steps import TimeSteps
+
 # date format for parsing data values from the YAML file
 DATE_FORMAT = "%d-%m-%Y"
 
@@ -51,7 +53,7 @@ class Variable:
 
 class DataSet:
 
-    VALID_TEMPORAL_RESOLUTIONS = ["daily","pentad","dekad","monthly","yearly"]
+    VALID_TEMPORAL_RESOLUTIONS = [TimeSteps.DAILY.value]
     VALID_SPATIAL_RESOLUTIONS = ["0.05","0.1","0.25","0.5","1"]
 
     def __init__(self, dataset_id:str, dataset_name:str, temporal_resolution:str, spatial_resolution:str, start_date:datetime.date, end_date:datetime.date, location:str, spec:dict, variables:list[Variable], enabled:bool=True):
