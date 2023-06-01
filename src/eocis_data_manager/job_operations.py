@@ -49,11 +49,11 @@ class JobOperations(Transaction):
             "INSERT INTO jobs(job_id, submission_date, submitter_id, spec, state, completion_date) values (%s,%s,%s,%s,%s,%s)",
             (
                 job.get_job_id(),
-                Store.encode_datetime(job.get_submission_date_time()),
+                Store.encode_datetime(job.get_submission_datetime()),
                 job.get_submitter_id(),
                 json.dumps(job.get_spec()),
                 job.get_state(),
-                Store.encode_datetime(job.get_completion_date_time())
+                Store.encode_datetime(job.get_completion_datetime())
             ))
         return self
 

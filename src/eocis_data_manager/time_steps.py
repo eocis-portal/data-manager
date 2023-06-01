@@ -27,5 +27,5 @@ class TimeSteps(Enum):
     MONTHLY = "monthly"
     DEKAD = "10-day"
     PENTAD = "5-day"
-    DAILY = "Daily"
+    DAILY = "daily"
 
