@@ -14,4 +14,4 @@ spec:
     maxy: 90
 datasets:
   - sst
-#  - oc
+  - oc
