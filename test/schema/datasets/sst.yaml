@@ -12,7 +12,7 @@ spec:
 variables:
   analysed_sst:
     name: Sea Surface Temperature
-  sst_uncertainty:
+  analysed_sst_uncertainty:
     name: Sea Surface Temperature Uncertainty
   sea_ice_fraction:
     name: Sea Ice Fraction

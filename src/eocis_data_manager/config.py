@@ -26,7 +26,7 @@ class Config:
     DATA_URL_PREFIX = "http://127.0.0.1:50001/data"  # URL prefix for the links to output files
 
     # database
-    DATABASE_PATH="dbname=eocis user=eocis"     # the path to the jobs database (a sqlite database file)
+    DATABASE_PATH="dbname=eocis user=eocis"     # the path to the jobs database
 
     # monitor
     TASK_QUOTA=1                        # the number of regridding tasks that can run in parallel

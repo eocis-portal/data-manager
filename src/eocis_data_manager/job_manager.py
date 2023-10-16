@@ -51,6 +51,10 @@ class JobManager:
             job_spec = job.get_spec()
             start_year = int(job_spec["START_YEAR"])
             end_year = int(job_spec["END_YEAR"])
+            bundle_id = job_spec["BUNDLE_ID"]
+            with SchemaOperations(Store()) as so:
+                bundle = so.get_bundle(bundle_id)
+
             # get a list of (dataset_id, variable_id) tuples
             variables = list(map(lambda v: tuple(v.split(":")), job_spec["VARIABLES"]))
             dataset_ids = set()
@@ -97,6 +101,16 @@ class JobManager:
                     task_spec["OUT_PATH"] = os.path.join(output_path, str(year))
                     task_spec["START_YEAR"] = task_spec["END_YEAR"] = str(year)
                     task_spec["OUTPUT_NAME_PATTERN"] = output_name_pattern
+                    task_spec["OUTPUT_FORMAT"] = job_spec["OUTPUT_FORMAT"]
+                    if "LON_MIN" not in task_spec:
+                        task_spec["LON_MIN"] = bundle.spec.get("bounds",{}).get("minx",-180)
+                    if "LON_MAX" not in task_spec:
+                        task_spec["LON_MAX"] = bundle.spec.get("bounds",{}).get("maxx",180)
+                    if "LAT_MIN" not in task_spec:
+                        task_spec["LAT_MIN"] = bundle.spec.get("bounds",{}).get("miny",-90)
+                    if "LAT_MAX" not in task_spec:
+                        task_spec["LAT_MAX"] = bundle.spec.get("bounds",{}).get("maxy",90)
+
                     # create a new task
                     task = Task.create(task_spec,job_id)
                     # persist it
