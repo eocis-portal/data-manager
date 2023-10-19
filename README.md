@@ -28,3 +28,13 @@ A `Job` represents a user request to retrieve data from one or more variables/da
 ### Tasks
 
 A `Task` represents a data-retrieval operation, performed as part of a `Job`.  Tasks can be executed in parallel.
+
+## Setup
+
+```
+pip install -e .
+(cd scripts; ./create.sh)
+python -m eocis_data_manager.tools.populate_schema schema
+python -m eocis_data_manager.tools.update_end_date
+python -m eocis_data_manager.tools.dump
+```

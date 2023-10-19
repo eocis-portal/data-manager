@@ -23,6 +23,13 @@ import os
 from eocis_data_manager.store import Store
 from eocis_data_manager.schema_operations import SchemaOperations
 
+def is_int(s):
+    try:
+        i = int(s)
+        return True
+    except:
+        return False
+
 def update_end_date(dataset_id=None):
     store = Store()
 
@@ -38,6 +45,7 @@ def update_end_date(dataset_id=None):
             if year_marker >= 0:
                 parent_folder = location[:year_marker]
                 years = os.listdir(parent_folder)
+                years = list(filter(lambda s: len(s) == 4 and is_int(s),years))
                 last_year = sorted(years)[-1]
                 location = location.replace("{YEAR}",last_year)
 

@@ -22,8 +22,8 @@ class Config:
 
     # web service configuration
     HOST="127.0.0.1"                    # the host name or IP address that the web service will listen on
-    PORT=50001                          # the port that the web service will listen on
-    DATA_URL_PREFIX = "http://127.0.0.1:50001/data"  # URL prefix for the links to output files
+    PORT=50010                          # the port that the web service will listen on
+    DATA_URL_PREFIX = "https://eocis.org/joboutput"  # URL prefix for the links to output files
 
     # database
     DATABASE_PATH="dbname=eocis user=eocis"     # the path to the jobs database
@@ -46,6 +46,6 @@ class Config:
     DEFAULT_END_MONTH = 12
 
     # output file location
-    OUTPUT_PATH = "/home/dev/joboutput"  # the path to the location to store job output files
+    OUTPUT_PATH = "/data/data_service/joboutput"  # the path to the location to store job output files
     OUTPUT_FILENAME_PATTERN = "{Y}{m}{d}{H}{M}{S}-EOCIS-{LEVEL}-{PRODUCT}-v{VERSION}-fv01.0"
 
