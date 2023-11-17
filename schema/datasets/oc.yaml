@@ -2,7 +2,7 @@ name: "Ocean Colour"
 enabled: true
 temporal_resolution: "daily"
 spatial_resolution: "0.05"
-start_date: "01-09-1981"
+start_date: "01-01-2022"
 location: "/data/ocean_colour/{YEAR}/*.nc"
 spec:
   metadata:

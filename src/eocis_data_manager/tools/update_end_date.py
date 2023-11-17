@@ -51,7 +51,7 @@ def update_end_date(dataset_id=None):
 
             # this can take some time
             print("Obtaining End Date for Dataset=%s from %s" % (dataset.dataset_id, location))
-            ds = xr.open_mfdataset(location)
+            ds = xr.open_mfdataset(location,concat_dim="time",combine="nested",combine_attrs="drop_conflicts",data_vars=[dataset.variables[0].variable_id])
 
             last_ts = ds["time"].values.tolist()[-1]
 

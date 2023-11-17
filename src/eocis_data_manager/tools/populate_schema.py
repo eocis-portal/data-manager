@@ -16,8 +16,12 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import os
+
 from eocis_data_manager.store import Store
 from eocis_data_manager.schema_operations import SchemaOperations
+
+folder = os.path.split(__file__)[0]
 
 def populate_schema(from_path:str):
     """
@@ -39,7 +43,7 @@ if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("schema_folder")
+    parser.add_argument("--schema-folder", default=os.path.join(folder,"..","..","..","schema"))
 
     args = parser.parse_args()
 

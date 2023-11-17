@@ -148,17 +148,16 @@ class JobManager:
         with JobOperations(self.store) as jo:
             new_running_count = jo.count_tasks_by_state([Task.STATE_NEW, Task.STATE_RUNNING], job_id=job_id)
             self.logger.info(f"Job {job_id} has {new_running_count} active tasks")
+            job = jo.get_job(job_id)
             if new_running_count == 0:
                 failed_count = jo.count_tasks_by_state([Task.STATE_FAILED], job_id=job_id)
-                job = jo.get_job(job_id)
                 if failed_count == 0:
                     job.set_completed()
                     self.logger.info(f"Job {job_id} completed")
                 else:
                     job.set_failed(f"{failed_count} tasks failed")
                     self.logger.info(f"Job {job_id} failed with {failed_count} failed tasks")
-
-                jo.update_job(job)
-
-
+            else:
+                job.set_running()
+            jo.update_job(job)
 

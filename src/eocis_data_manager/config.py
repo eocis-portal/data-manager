@@ -23,7 +23,8 @@ class Config:
     # web service configuration
     HOST="127.0.0.1"                    # the host name or IP address that the web service will listen on
     PORT=50010                          # the port that the web service will listen on
-    DATA_URL_PREFIX = "https://eocis.org/joboutput"  # URL prefix for the links to output files
+    # DATA_URL_PREFIX = "https://eocis.org/joboutput"  # URL prefix for the links to output files
+    DATA_URL_PREFIX = "/joboutput"  # URL prefix for the links to output files
 
     # database
     DATABASE_PATH="dbname=eocis user=eocis"     # the path to the jobs database
@@ -33,17 +34,6 @@ class Config:
     JOB_QUOTA=2                         # the number of regridding jobs that can run in parallel
     CLEANUP_AFTER_SECS=100000           # the interval after which a job is cleaned up and its files are deleted
     MAX_TASK_RETRIES = 1                # how many times a failed task can be retried
-
-    START_YEAR = 2022
-    START_MONTH = 1
-    END_YEAR = 2022
-    END_MONTH = 12
-
-    DEFAULT_START_YEAR = 2022
-    DEFAULT_START_MONTH = 1
-
-    DEFAULT_END_YEAR = 2022
-    DEFAULT_END_MONTH = 12
 
     # output file location
     OUTPUT_PATH = "/data/data_service/joboutput"  # the path to the location to store job output files
