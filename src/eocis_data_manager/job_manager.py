@@ -66,14 +66,17 @@ class JobManager:
 
             for task_dataset_id in dataset_ids:
                 task_variables = []
-
-                for (dataset_id, variable_id) in variables:
-                    if dataset_id == task_dataset_id:
-                        task_variables.append(variable_id)
+                aggregation_methods = []
 
                 with SchemaOperations(Store()) as so:
                     dataset = so.get_dataset(dataset_id)
                     dataset_inpath = dataset.location
+                    for (dataset_id, variable_id) in variables:
+                        if dataset_id == task_dataset_id:
+                            task_variables.append(variable_id)
+                            variable = dataset.get_variable(variable_id)
+                            aggregation_method = variable.spec.get("aggregation_method","mean")
+                            aggregation_methods.append(aggregation_method)
 
                 dataset_metadata = dataset.spec.get("metadata",{})
                 level = dataset_metadata.get("level","LEVEL")
@@ -102,6 +105,7 @@ class JobManager:
                     task_spec["START_YEAR"] = task_spec["END_YEAR"] = str(year)
                     task_spec["OUTPUT_NAME_PATTERN"] = output_name_pattern
                     task_spec["OUTPUT_FORMAT"] = job_spec["OUTPUT_FORMAT"]
+                    task_spec["AGGREGATION_METHODS"] = aggregation_methods
                     if "LON_MIN" not in task_spec:
                         task_spec["LON_MIN"] = bundle.spec.get("bounds",{}).get("minx",-180)
                     if "LON_MAX" not in task_spec:

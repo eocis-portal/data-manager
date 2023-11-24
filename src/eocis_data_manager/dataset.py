@@ -112,6 +112,12 @@ class DataSet:
                 datasets.append(dataset)
         return datasets
 
+    def get_variable(self, variable_id):
+        for v in self.variables:
+            if v.variable_id == variable_id:
+                return v
+        return None
+
     def __repr__(self) -> str:
         spec = json.dumps(self.spec)
         variables = ", ".join([str(v) for v in self.variables])

@@ -12,3 +12,5 @@ spec:
 variables:
   chlor_a:
     name: Chlorophyll-a concentration in Seawater
+    spec:
+      aggregation_method: "mean-log"
