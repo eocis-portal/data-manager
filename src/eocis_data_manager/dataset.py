@@ -53,7 +53,7 @@ class Variable:
 
 class DataSet:
 
-    VALID_TEMPORAL_RESOLUTIONS = [TimeSteps.DAILY.value]
+    VALID_TEMPORAL_RESOLUTIONS = [TimeSteps.DAILY.value, TimeSteps.MONTHLY.value]
     VALID_SPATIAL_RESOLUTIONS = ["0.05","0.1","0.25","0.5","1"]
 
     def __init__(self, dataset_id:str, dataset_name:str, temporal_resolution:str, spatial_resolution:str, start_date:datetime.date, end_date:datetime.date, location:str, spec:dict, variables:list[Variable], enabled:bool=True):
@@ -117,6 +117,9 @@ class DataSet:
             if v.variable_id == variable_id:
                 return v
         return None
+
+    def get_temporal_resolution(self):
+        return self.temporal_resolution
 
     def __repr__(self) -> str:
         spec = json.dumps(self.spec)

@@ -116,7 +116,7 @@ class JobManager:
                         task_spec["LAT_MAX"] = bundle.spec.get("bounds",{}).get("maxy",90)
 
                     # create a new task
-                    task = Task.create(task_spec,job_id)
+                    task = Task.create(task_spec,job_id,task_type="subset")
                     # persist it
                     jo.create_task(task)
                     # queue for execution

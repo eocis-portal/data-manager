@@ -80,9 +80,10 @@ class JobOperations(Transaction):
         """
         curs = self.conn.cursor()
         curs.execute(
-            "INSERT INTO tasks(parent_job_id, task_name, submission_date, spec, state, completion_date, error, retry_count) values (%s,%s,%s,%s,%s,%s,%s,%s);",
+            "INSERT INTO tasks(parent_job_id, task_type, task_name, submission_date, spec, state, completion_date, error, retry_count) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);",
             (
                 task.get_job_id(),
+                task.get_task_type(),
                 task.get_task_name(),
                 Store.encode_datetime(task.get_submission_datetime()),
                 json.dumps(task.get_spec()),
@@ -268,7 +269,7 @@ class JobOperations(Transaction):
     def collect_tasks(self, results):
         tasks = []
         for row in results:
-            task = Task(row[Store.TASK_PARENT_JOB_ID], row[Store.TASK_TASK_NAME], json.loads(row[Store.TASK_SPEC]))
+            task = Task(row[Store.TASK_PARENT_JOB_ID], row[Store.TASK_TASK_TYPE], row[Store.TASK_TASK_NAME], json.loads(row[Store.TASK_SPEC]))
             task \
                 .set_completion_datetime(Store.decode_datetime(row[Store.TASK_COMPLETION_DATE])) \
                 .set_submission_datetime(Store.decode_datetime(row[Store.TASK_SUBMISSION_DATE])) \

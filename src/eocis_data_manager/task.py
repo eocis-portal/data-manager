@@ -37,9 +37,10 @@ class Task:
     Represent a task - a discrete executable piece of work that contributes towards the completion of a job
     """
 
-    def __init__(self,job_id,task_name=None,spec=None):
+    def __init__(self,job_id,task_type="subset",task_name=None,spec=None):
         self.job_id = job_id
         self.task_name = task_name or str(uuid.uuid4())
+        self.task_type = task_type
         self.spec = spec
         self.state = Task.STATE_NEW
         self.error = ""
@@ -68,6 +69,9 @@ class Task:
 
     def get_job_id(self):
         return self.job_id
+
+    def get_task_type(self):
+        return self.task_type
 
     def get_task_name(self):
         return self.task_name
@@ -124,7 +128,6 @@ class Task:
                 return 0
         return (self.get_completion_datetime() - self.get_submission_datetime()).total_seconds() / 3600
 
-
     def __repr__(self):
         status = self.get_state()
         status_msg = status
@@ -133,7 +136,7 @@ class Task:
             status_msg += "(try=%d)"%rcount
         if status == Task.STATE_FAILED:
             status_msg += "(%s)"%(self.get_error())
-        return "%s %s %0.2f hours"%(self.get_task_name(), status_msg, self.get_duration_hours())
+        return "%s %s %s %0.2f hours"%(self.get_task_type(), self.get_task_name(), status_msg, self.get_duration_hours())
 
     STATE_NEW = "NEW"
     STATE_RUNNING = "RUNNING"
@@ -145,5 +148,5 @@ class Task:
         return [Task.STATE_NEW,Task.STATE_RUNNING,Task.STATE_COMPLETED,Task.STATE_FAILED]
 
     @staticmethod
-    def create(spec, job_id, task_name=None):
-        return Task(job_id=job_id, task_name=task_name,spec=spec)
+    def create(spec, job_id, task_type="subset", task_name=None):
+        return Task(job_id=job_id, task_type=task_type, task_name=task_name,spec=spec)

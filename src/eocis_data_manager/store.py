@@ -168,6 +168,7 @@ class Store:
 
         curs.execute('''CREATE TABLE IF NOT EXISTS tasks(
                 parent_job_id text, 
+                task_type text,
                 task_name text, 
                 submission_date text, 
                 remote_task_id text, 
@@ -238,6 +239,7 @@ class Store:
     JOB_ERROR = "error"
 
     TASK_PARENT_JOB_ID = "parent_job_id"
+    TASK_TASK_TYPE = "task_type"
     TASK_TASK_NAME = "task_name"
     TASK_SUBMISSION_DATE = "submission_date"
     TASK_REMOTE_TASK_ID = "remote_task_id"

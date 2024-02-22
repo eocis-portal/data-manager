@@ -1,0 +1,14 @@
+name: "Soil Moisture - Africa - Daily"
+spec:
+  spatial_resolutions:
+    - "0.25"
+  temporal_resolutions:
+    - "daily"
+  bounds:
+    minx: -17.875
+    maxx: 51.375
+    miny: -35.375
+    maxy: 37.375
+  license: Creative Commons Attribution 4.0 (CC-BY 4.0)
+datasets:
+  - sm_daily

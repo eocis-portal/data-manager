@@ -1,0 +1,14 @@
+name: "Ocean Colour - Monthly"
+spec:
+  spatial_resolutions:
+    - "0.04"
+  temporal_resolutions:
+    - "monthly"
+  bounds:
+    minx: -180
+    maxx: 180
+    miny: -90
+    maxy: 90
+  license: Creative Commons Attribution 4.0 (CC-BY 4.0)
+datasets:
+  - oc_monthly

@@ -3,7 +3,7 @@ enabled: true
 temporal_resolution: "daily"
 spatial_resolution: "0.05"
 start_date: "01-01-2022"
-location: "/data/esacci_sst/public/CDR3.0_release/Analysis/L4/v3.0.1/{YEAR}/*/*/*.nc"
+location: "/data/esacci_sst/public/CDR3.0_release/Analysis/L4/v3.0.1/{YEAR}/{MONTH}/{DAY}/*.nc"
 spec:
   metadata:
     product: SST
@@ -14,11 +14,11 @@ variables:
     name: Sea Surface Temperature
     spec:
       aggregation_method: "mean"
+  analysed_sst_uncertainty:
+    name: Sea Surface Temperature Uncertainty
+    spec:
+      aggregation_method: ""
   sea_ice_fraction:
     name: Sea Ice Fraction
-    spec:
-      aggregation_method: "mean"
-  sea_fraction:
-    name: Sea Fraction
     spec:
       aggregation_method: "mean"
