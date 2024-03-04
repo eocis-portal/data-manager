@@ -69,10 +69,10 @@ class JobManager:
                 aggregation_methods = []
 
                 with SchemaOperations(Store()) as so:
-                    dataset = so.get_dataset(dataset_id)
-                    dataset_inpath = dataset.location
                     for (dataset_id, variable_id) in variables:
                         if dataset_id == task_dataset_id:
+                            dataset = so.get_dataset(dataset_id)
+                            dataset_inpath = dataset.location
                             task_variables.append(variable_id)
                             variable = dataset.get_variable(variable_id)
                             aggregation_method = variable.spec.get("aggregation_method","mean")
@@ -134,12 +134,13 @@ class JobManager:
         year = task.spec["END_YEAR"]
         zip_path = os.path.join(output_path,year+".zip")
         task_out_path = task.spec["OUT_PATH"]
-        with zipfile.ZipFile(zip_path, 'w') as outz:
-            for file_name in os.listdir(task_out_path):
-                file_path = os.path.join(task_out_path,file_name)
-                outz.write(file_path, file_name)
-                os.remove(file_path)
-            os.rmdir(task_out_path)
+        output_files = os.listdir(task_out_path)
+        if len(output_files):
+            with zipfile.ZipFile(zip_path, 'a') as outz:
+                for file_name in output_files:
+                    file_path = os.path.join(task_out_path,file_name)
+                    outz.write(file_path, file_name)
+                    os.remove(file_path)
         return zip_path
 
     def update_job(self, job_id:str):

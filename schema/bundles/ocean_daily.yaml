@@ -1,9 +1,9 @@
-name: "Ocean Colour - Monthly (4km)"
+name: "Ocean SST/Colour, Daily 0.05 degrees"
 spec:
   spatial_resolutions:
-    - "0.04"
+    - "0.05"
   temporal_resolutions:
-    - "monthly"
+    - "daily"
   bounds:
     minx: -180
     maxx: 180
@@ -11,4 +11,5 @@ spec:
     maxy: 90
   license: Creative Commons Attribution 4.0 (CC-BY 4.0)
 datasets:
-  - oc_monthly
+  - oc_daily
+  - sst_daily  

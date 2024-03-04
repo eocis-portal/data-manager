@@ -37,6 +37,13 @@ class SchemaOperations(Transaction):
         curs.execute("DELETE FROM variables;")
         curs.execute("DELETE FROM dataset_bundle;")
 
+    def wipe(self):
+        curs = self.conn.cursor()
+        curs.execute("DROP TABLE dataset_bundle;")
+        curs.execute("DROP TABLE variables;")
+        curs.execute("DROP TABLE bundles;")
+        curs.execute("DROP TABLE datasets;")
+
     def populate_schema(self, path):
         self.clear_schema()
 

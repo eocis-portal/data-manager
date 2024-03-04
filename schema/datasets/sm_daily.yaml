@@ -2,8 +2,8 @@ name: "Soil Moisture - Africa - Daily"
 enabled: true
 temporal_resolution: "daily"
 spatial_resolution: "0.25"
-start_date: "01-01-2020"
-location: "/data/soil_moisture/v2.3.0/{YEAR}/{MONTH}/EOCIS-SM-L4-WB-AFRICA-TAMSAT-{YEAR}{MONTH}{DAY}-fv2.3.0.nc"
+start_date: "01-01-1983"
+location: "/data/soil_moisture/v2.3.0/daily/{YEAR}/{MONTH}/EOCIS-SM-L4-WB-AFRICA-TAMSAT-{YEAR}{MONTH}{DAY}-fv2.3.0.nc"
 spec:
   metadata:
     product: SM

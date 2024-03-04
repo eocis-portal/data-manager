@@ -332,3 +332,9 @@ class JobOperations(Transaction):
         curs = self.conn.cursor()
         curs.execute("select COUNT(*) FROM tasks WHERE error <> '' AND parent_job_id = ?", (job_id,))
         return curs.fetchone()[0]
+
+    def wipe(self):
+        curs = self.conn.cursor()
+        curs.execute("DROP TABLE tasks;")
+        curs.execute("DROP TABLE jobs;")
+        curs.execute("DROP TABLE task_queue;")

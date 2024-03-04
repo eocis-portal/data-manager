@@ -2,8 +2,8 @@ name: "Ocean Colour - Monthly"
 enabled: true
 temporal_resolution: "monthly"
 spatial_resolution: "0.05"
-start_date: "01-01-2020"
-location: "/data/ocean_colour/{DAY}/{YEAR}/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-{YEAR}{MONTH}-fv6.0.nc"
+start_date: "01-09-1997"
+location: "/data/ocean_colour_monthly/{DAY}/{YEAR}/ESACCI-OC-L3S-CHLOR_A-MERGED-1M_MONTHLY_4km_GEO_PML_OCx-{YEAR}{MONTH}-fv6.0.nc"
 spec:
   metadata:
     product: OC
